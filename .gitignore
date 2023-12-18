@@ -16,6 +16,7 @@ dist
 .github
 .git
 .vs/
+.vscode
 
 # compiled
 utils/reload/*.js
