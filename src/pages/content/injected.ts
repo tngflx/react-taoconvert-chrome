@@ -15,7 +15,7 @@ export async function injectScript() {
     // const timer = ms => new Promise(res => setTimeout(res, ms))
 
     chrome.runtime.onMessage.addListener(
-        function (request, sender, sendResponse) {
+        function (request) {
             if (request.action === "taobao_currency_choose") {
                 location.reload();
             }
