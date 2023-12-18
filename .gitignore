@@ -11,6 +11,11 @@
 .DS_Store
 .env.local
 .idea
+dist
+.husky
+.github
+.git
+.vs/
 
 # compiled
 utils/reload/*.js
