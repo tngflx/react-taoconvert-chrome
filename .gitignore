@@ -8,8 +8,8 @@
 .git
 dist
 .vs/*
-/.github
-/.husky
+.github
+.husky
 
 # etc
 .DS_Store
