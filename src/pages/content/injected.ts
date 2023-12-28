@@ -1,4 +1,5 @@
-//import exampleThemeStorage from '@src/shared/storages/exampleThemeStorage';
+import { CurrencyAPI } from "./utils/currencyAPI";
+import { MutationObserverManager, findParentElbyClassName } from "./utils/misc";
 
 export async function injectScript() {
     //cariable declarion
@@ -21,133 +22,10 @@ export async function injectScript() {
             }
         }
     );
-    class CurrencyAPI {
-        baseUrl: string;
-        headers: HeadersInit
-        constructor() {
-            this.baseUrl = 'https://api.freecurrencyapi.com/v1/';
-            this.headers = {
-                apikey: "fca_live_ELSJj5SD57q5MeuvJeSqvWUjdK7jGJabegz4d5G2"
-            };
-        }
 
-        call(endpoint, params = {}) {
-            const paramString = new URLSearchParams({ ...params }).toString();
-
-            return fetch(`${this.baseUrl}${endpoint}?${paramString}`, { headers: this.headers })
-                .then(response => response.json())
-                .then(data => data);
-        }
-
-        status() {
-            return this.call('status');
-        }
-
-        currencies(params) {
-            return this.call('currencies', params);
-        }
-
-        latest(params) {
-            return this.call('latest', params);
-        }
-
-        historical(params) {
-            return this.call('historical', params);
-        }
-    }
 
     // Create an instance of the CurrencyAPI class
-    const currencyApi = new CurrencyAPI();
-
-    class MutationObserverManager {
-        config: { mode: string; mutatedTargetChildNode: string; mutatedTargetParentNode: string; subtree: boolean; };
-        foundTargetNode: boolean;
-        mutatedTargetParentNode: Element | null;
-        mutatedTargetChildNode: Element | string;
-        subtree: boolean;
-
-        constructor() {
-            this.config = { mode: '', mutatedTargetChildNode: '', mutatedTargetParentNode: '', subtree: false };
-            this.foundTargetNode = false
-            this.mutatedTargetParentNode = null
-            this.mutatedTargetChildNode = null
-            this.subtree = false
-        }
-
-        startObserver(callback) {
-            const { mode, mutatedTargetChildNode, mutatedTargetParentNode, subtree } = this.config;
-
-            let targetElement = document.querySelector(mutatedTargetParentNode)
-            if (targetElement) {
-                this.mutatedTargetParentNode = targetElement
-                this.mutatedTargetChildNode = mutatedTargetChildNode
-                this.subtree = subtree
-            } else console.error(`Element with selector '${mutatedTargetParentNode}' not found.`);
-
-            console.log(`parent: ${mutatedTargetParentNode}, mode: ${mode}, mutatedChild: ${mutatedTargetChildNode}`)
-
-            if (!mode || !mutatedTargetChildNode) {
-                console.error('Config for mutationObserverManager is empty. Please provide valid configuration.');
-                return -1; // or handle it in another way based on your requirements
-            }
-
-            const observer = new MutationObserver((mutationsList, observer) => {
-                switch (mode) {
-                    case 'addedNode':
-                        this.foundTargetNode = mutationsList.some(mutation => {
-
-                            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                                return Array.from(mutation.addedNodes).some(node =>
-                                    sharedUtility.checkClassNameInChildEl(node as Element, mutatedTargetChildNode)
-                                );
-                            }
-                            return false;
-                        });
-
-                        this.stopObserverBeforeDomChanges(observer, callback)
-                        break;
-
-                    case 'removedNode':
-                        this.foundTargetNode = mutationsList.some(mutation =>
-                            mutation.type === 'childList' &&
-                            Array.from(mutation.removedNodes).some(node =>
-                                sharedUtility.checkClassNameInChildEl(node as Element, mutatedTargetChildNode)
-
-                            )
-                        );
-
-                        this.stopObserverBeforeDomChanges(observer, callback)
-                        break;
-
-                    case 'removedText':
-                        this.foundTargetNode = mutationsList.some(mutation =>
-                            mutation.type === 'childList' &&
-                            Array.from(mutation.removedNodes).some(node =>
-                                node.nodeName.includes('text') || node.nodeName.includes('comment')
-                            )
-                        );
-
-                        this.stopObserverBeforeDomChanges(observer, callback)
-                        break;
-                    default:
-                }
-
-            });
-            if (targetElement)
-                observer.observe(targetElement, { childList: true, subtree });
-
-
-        }
-
-        stopObserverBeforeDomChanges(observer, callback) {
-            observer.disconnect()
-
-            if (this.foundTargetNode) {
-                callback()
-            }
-            observer.observe(this.mutatedTargetParentNode, { childList: true, subtree: this.subtree });
-        }
-    }
+    const currencyApi = new CurrencyAPI
 
     const mutObserverManager = new MutationObserverManager();
 
@@ -194,45 +72,7 @@ export async function injectScript() {
 
         }
 
-        /**
-         * Find element / dom entities by class name or the tag
-         * @param {string} element The iteration object from querySelectorAll
-         * @param {any} class_name class name u want to look for
-         * @param {any} element_tag the tag u want to look for, example <div> <p>
-         * @returns
-         */
-        findParentElbyClassName(element: Element | null, class_name: string, element_tag?: string): Element | null {
-            let lowerCaseClassName = class_name.toLowerCase();
-            element_tag = element_tag || '*';
 
-            while (element && element.tagName !== 'HTML') {
-                const matchingElement = Array.from(element.getElementsByTagName(element_tag)).find(el => {
-                    return typeof el.className === 'string' && el.className.toLowerCase().includes(lowerCaseClassName);
-                });
-
-                if (matchingElement) {
-                    return matchingElement;
-                }
-
-                element = element.parentNode as Element;
-            }
-
-            return null; // Return null if no matching element is found in the ancestors
-        }
-
-        checkClassNameInChildEl(element: Element, class_name: string) {
-            if (element.className && typeof element.className === 'string' && element.className.includes(class_name)) {
-                return true;
-            }
-
-            if (element.childNodes.length > 0) {
-                return Array.from(element.childNodes).some(child =>
-                    child.nodeType === 1 && this.checkClassNameInChildEl(child as Element, class_name)
-                );
-            }
-
-            return false;
-        }
 
         createPriceBox(item_price_element, class_name) {
             const item_price = item_price_element.textContent
@@ -249,7 +89,7 @@ export async function injectScript() {
             }
         }
 
-        removeTrailingTaoConvPricebox(parentNode ?: string) {
+        removeTrailingTaoConvPricebox(parentNode?: string) {
             const target_selector = parentNode ? `${parentNode} .taoconvert_pricebox_tag` : '.taoconvert_pricebox_tag'
             const trailing_taoconv_pricebox = document.querySelectorAll(target_selector)
             if (trailing_taoconv_pricebox.length > 0)
@@ -264,11 +104,13 @@ export async function injectScript() {
     if (location.href.includes("https://world.taobao.com/")) {
         let lastProcessedIndex = 0; // Variable to keep track of the last processed index
 
-        window.onload = (event) => {
-            mutObserverManager.config = { mode: 'addedNode', mutatedTargetChildNode: 'item', mutatedTargetParentNode: '.item-feed .list', subtree: false }
-            mutObserverManager.startObserver(addConversionPrice);
-            addConversionPrice();
-        };
+        //window.onload = (event) => {
+
+        //    addConversionPrice();
+        //};
+
+        mutObserverManager.config = { mode: 'addedNode', mutatedTargetChildNode: 'item', mutatedTargetParentNode: '.item-feed .list', subtree: false }
+        mutObserverManager.startObserver(addConversionPrice);
 
         function addConversionPrice() {
             let price_elements = document.querySelectorAll(".price-text");
@@ -329,10 +171,10 @@ export async function injectScript() {
 
             for (let price_wrapper_element of price_wrapper_elements as NodeListOf<HTMLElement>) {
                 // get Price int and float using more generic selectors
-                let price_int_element = sharedUtility.findParentElbyClassName(price_wrapper_element, 'priceInt') as HTMLElement;
+                let price_int_element = findParentElbyClassName(price_wrapper_element, 'priceInt') as HTMLElement;
                 if (!price_int_element) console.log('no element');
 
-                let price_float_element = sharedUtility.findParentElbyClassName(price_wrapper_element, 'priceFloat') as HTMLElement;
+                let price_float_element = findParentElbyClassName(price_wrapper_element, 'priceFloat') as HTMLElement;
                 if (!price_float_element) console.log('no element');
 
                 // Extract the text content of priceInt and priceFloat elements
@@ -353,7 +195,7 @@ export async function injectScript() {
                     price_wrapper_element.style.height = "44px";
                     price_wrapper_element.style['align-items'] = "flex-start";
 
-                    let priceSalesSpan = sharedUtility.findParentElbyClassName(price_wrapper_element, 'realSales') as HTMLElement;
+                    let priceSalesSpan = findParentElbyClassName(price_wrapper_element, 'realSales') as HTMLElement;
                     priceSalesSpan.style["line-height"] = "20px";
 
                     price_wrapper_element.classList.add('taoconvert_pricebox_container');
@@ -370,8 +212,8 @@ export async function injectScript() {
             sharedUtility.removeTrailingTaoConvPricebox(RightAdsPageDivToObserve);
 
             for (let item of ads_price_wrapper) {
-                const ad_price_element = sharedUtility.findParentElbyClassName(item, 'price', 'a') as HTMLElement;
-                const ad_price_wrapper_element = sharedUtility.findParentElbyClassName(item, 'line1', 'div') as HTMLElement;
+                const ad_price_element = findParentElbyClassName(item, 'price', 'a') as HTMLElement;
+                const ad_price_wrapper_element = findParentElbyClassName(item, 'line1', 'div') as HTMLElement;
 
                 if (!ad_price_element) {
                     console.error(`ad_price_element not found`);
@@ -448,8 +290,8 @@ export async function injectScript() {
             let tmall_original_price_element;
 
             Array.from(tmall_price_elements).forEach(el => {
-                const discountedPriceElement = sharedUtility.findParentElbyClassName(el, "extraPrice");
-                const originalPriceElement = sharedUtility.findParentElbyClassName(el, "originPrice");
+                const discountedPriceElement = findParentElbyClassName(el, "extraPrice");
+                const originalPriceElement = findParentElbyClassName(el, "originPrice");
 
                 if (discountedPriceElement) {
                     tmall_discounted_price_element = discountedPriceElement;
