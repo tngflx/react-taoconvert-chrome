@@ -89,7 +89,7 @@ devDependencies:
     specifier: 11.1.1
     version: 11.1.1
   husky:
-    specifier: 8.0.3
+    specifier: ^8.0.0
     version: 8.0.3
   jsdom:
     specifier: ^22.1.0

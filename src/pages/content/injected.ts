@@ -153,17 +153,16 @@ export async function injectScript() {
         let RightAdsPageDivToObserve = 'div[class^="RightLay--rightWrap"] [class*="templet"]';
         let BottomAdsPageDivToObserve = 'div[class^="BottomLay--bottomWrap"] [class*="templet"]';
 
-        window.onload = (event) => {
-            mutObserverManager.config = { mode: 'addedNode', mutatedTargetChildNode: "doubleCardWrapper", mutatedTargetParentNode: searchResultPageDivToObserve, subtree: false };
-            mutObserverManager.startObserver(changeTaobaoSearchResultPagePriceTag);
+        mutObserverManager.config = { mode: 'addedNode', mutatedTargetChildNode: "doubleCardWrapper", mutatedTargetParentNode: searchResultPageDivToObserve, subtree: false };
+        mutObserverManager.startObserver(changeTaobaoSearchResultPagePriceTag);
+        BottomAdsObserverManager = new MutationObserverManager();
 
+        window.onload = (event) => {
             // Bottom ads load the last, so need different observer for it even though shares the same div structure and elements
-            BottomAdsObserverManager = new MutationObserverManager();
             BottomAdsObserverManager.config = { mode: 'addedNode', mutatedTargetChildNode: "line1", mutatedTargetParentNode: BottomAdsPageDivToObserve, subtree: false };
             BottomAdsObserverManager.startObserver(changeTaobaoSearchResultPageAdsPriceTag);
 
             changeTaobaoSearchResultPageAdsPriceTag();
-            changeTaobaoSearchResultPagePriceTag();
         };
 
         async function changeTaobaoSearchResultPagePriceTag() {
@@ -247,11 +246,9 @@ export async function injectScript() {
     if (location.href.includes("https://item.taobao.com/")) {
         const itemPageDivToObserve = "#J_StrPrice .tb-rmb-num"
 
-        window.onload = () => {
-            mutObserverManager.config = { mode: 'removedText', mutatedTargetChildNode: "tb-rmb-num", mutatedTargetParentNode: itemPageDivToObserve, subtree: false }
-            mutObserverManager.startObserver(changeTaobaoItemPagePriceTag)
-            changeTaobaoItemPagePriceTag()
-        }
+        mutObserverManager.config = { mode: 'removedText', mutatedTargetChildNode: "tb-rmb-num", mutatedTargetParentNode: itemPageDivToObserve, subtree: false }
+        mutObserverManager.startObserver(changeTaobaoItemPagePriceTag)
+
 
         function changeTaobaoItemPagePriceTag() {
             sharedUtility.removeTrailingTaoConvPricebox()
@@ -276,11 +273,9 @@ export async function injectScript() {
         //if this component load start the script
         const TmallPageDivToObserve = "[class*='originPrice']"
 
-        window.onload = () => {
-            mutObserverManager.config = { mode: 'removedText', mutatedTargetChildNode: "[class*='priceText']", mutatedTargetParentNode: TmallPageDivToObserve, subtree: true }
-            mutObserverManager.startObserver(changeTmallPagePriceTag)
-            changeTmallPagePriceTag()
-        }
+        mutObserverManager.config = { mode: 'removedText', mutatedTargetChildNode: "[class*='priceText']", mutatedTargetParentNode: TmallPageDivToObserve, subtree: true }
+        mutObserverManager.startObserver(changeTmallPagePriceTag)
+
 
         function changeTmallPagePriceTag() {
             sharedUtility.removeTrailingTaoConvPricebox()
