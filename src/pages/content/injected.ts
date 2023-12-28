@@ -191,7 +191,7 @@ export async function injectScript() {
 
                     price_int_element.style.fontSize = "17px";
                     price_float_element.style.fontSize = "17px";
-                    price_wrapper_element.style.height = "44px";
+                    price_wrapper_element.style.height = "fit-content";
                     price_wrapper_element.style['align-items'] = "flex-start";
 
                     let priceSalesSpan = findParentElbyClassName(price_wrapper_element, 'realSales') as HTMLElement;
@@ -229,7 +229,7 @@ export async function injectScript() {
 
                     let converted_price = (original_ad_price * currency_rate).toFixed(2);
                     ad_price_element.style["font-size"] = '15px';
-                    ad_price_wrapper_element.style["height"] = '23px';
+                    ad_price_wrapper_element.style["height"] = 'fit-content';
 
                     ad_price_element.classList.add('taoconvert_pricebox_container');
                     ad_price_element.innerHTML += '<div class="taoconvert_pricebox_tag sm"><i></i><span> ≈ ' + converted_price + ' ' + currency_change + '</span></div>';

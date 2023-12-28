@@ -11,5 +11,4 @@ import('@pages/content/ui');
 import('@pages/content/utils/misc')
 import('@pages/content/utils/currencyAPI')
 import('@pages/content/injected');
-
-console.log('content loaded');
+import('@pages/content/injectedBuyerTrade');
