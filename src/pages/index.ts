@@ -7,8 +7,4 @@
  * If you want to use other modules in content scripts, you need to import them via these files.
  *
  */
-import('@pages/content/ui');
-import('@pages/content/utils/misc')
-import('@pages/content/utils/currencyAPI')
-import('@pages/content/injected');
-import('@pages/content/injectedBuyerTrade');
+import('@pages/app')
