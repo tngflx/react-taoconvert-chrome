@@ -1,4 +1,67 @@
-export class MutationObserverManager {
+export class DOMTools {
+
+    /**
+     * Find element / dom entities by class name or the tag
+     * @param {string} element The iteration object from querySelectorAll
+     * @param {any} class_name class name u want to look for
+     * @param {any} element_tag the tag u want to look for, example <div> <p>
+     * @returns
+     */
+    findParentElbyClassName(element: Element | null, class_name: string, element_tag?: string): Element | null {
+        let lowerCaseClassName = class_name.toLowerCase();
+        element_tag = element_tag || '*';
+
+        while (element && element.tagName !== 'HTML') {
+            const matchingElement = Array.from(element.getElementsByTagName(element_tag)).find(el => {
+                return typeof el.className === 'string' && el.className.toLowerCase().includes(lowerCaseClassName);
+            });
+
+            if (matchingElement) {
+                return matchingElement;
+            }
+
+            element = element.parentNode as Element;
+        }
+
+        return null; // Return null if no matching element is found in the ancestors
+    }
+
+    findMultipleParentElbyClassName(element: Element | null, class_name: string, element_tag?: string): Element[] {
+        let lowerCaseClassName = class_name.toLowerCase();
+        element_tag = element_tag || '*';
+
+        const matchingElements: Element[] = [];
+
+        while (element && element.tagName !== 'HTML') {
+            const elements = Array.from(element.getElementsByTagName(element_tag)).filter(el => {
+                return typeof el.className === 'string' && el.className.toLowerCase().includes(lowerCaseClassName);
+            });
+
+            if (elements.length > 0) {
+                matchingElements.push(...elements);
+            }
+
+            element = element.parentNode as Element;
+        }
+
+        return matchingElements;
+    }
+
+    checkClassNameInChildEl(element: Element, class_name: string) {
+        if (element.className && typeof element.className === 'string' && element.className.includes(class_name)) {
+            return true;
+        }
+
+        if (element.childNodes.length > 0) {
+            return Array.from(element.childNodes).some(child =>
+                child.nodeType === 1 && this.checkClassNameInChildEl(child as Element, class_name)
+            );
+        }
+
+        return false;
+    }
+}
+export class MutationObserverManager extends DOMTools {
     config: { mode: string; mutatedTargetChildNode: string; mutatedTargetParentNode: string; subtree: boolean; };
     foundTargetNode: boolean;
     mutatedTargetParentNode: Element | null;
@@ -6,6 +69,7 @@ export class MutationObserverManager {
     subtree: boolean;
 
     constructor() {
+        super();
         this.config = { mode: '', mutatedTargetChildNode: '', mutatedTargetParentNode: '', subtree: false };
         this.foundTargetNode = false
         this.mutatedTargetParentNode = null
@@ -37,7 +101,7 @@ export class MutationObserverManager {
 
                         if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                             return Array.from(mutation.addedNodes).some(node =>
-                                checkClassNameInChildEl(node as Element, mutatedTargetChildNode)
+                                this.checkClassNameInChildEl(node as Element, mutatedTargetChildNode)
                             );
                         }
                         return false;
@@ -50,7 +114,7 @@ export class MutationObserverManager {
                     this.foundTargetNode = mutationsList.some(mutation =>
                         mutation.type === 'childList' &&
                         Array.from(mutation.removedNodes).some(node =>
-                            checkClassNameInChildEl(node as Element, mutatedTargetChildNode)
+                            this.checkClassNameInChildEl(node as Element, mutatedTargetChildNode)
 
                         )
                     );
@@ -86,45 +150,4 @@ export class MutationObserverManager {
         }
         observer.observe(this.mutatedTargetParentNode, { childList: true, subtree: this.subtree });
     }
-}
-
-
-/**
-     * Find element / dom entities by class name or the tag
-     * @param {string} element The iteration object from querySelectorAll
-     * @param {any} class_name class name u want to look for
-     * @param {any} element_tag the tag u want to look for, example <div> <p>
-     * @returns
-     */
-export function findParentElbyClassName(element: Element | null, class_name: string, element_tag ?: string): Element | null {
-    let lowerCaseClassName = class_name.toLowerCase();
-    element_tag = element_tag || '*';
-
-    while (element && element.tagName !== 'HTML') {
-        const matchingElement = Array.from(element.getElementsByTagName(element_tag)).find(el => {
-            return typeof el.className === 'string' && el.className.toLowerCase().includes(lowerCaseClassName);
-        });
-
-        if (matchingElement) {
-            return matchingElement;
-        }
-
-        element = element.parentNode as Element;
-    }
-
-    return null; // Return null if no matching element is found in the ancestors
-}
-
-export function checkClassNameInChildEl(element: Element, class_name: string) {
-    if (element.className && typeof element.className === 'string' && element.className.includes(class_name)) {
-        return true;
-    }
-
-    if (element.childNodes.length > 0) {
-        return Array.from(element.childNodes).some(child =>
-            child.nodeType === 1 && checkClassNameInChildEl(child as Element, class_name)
-        );
-    }
-
-    return false;
 }

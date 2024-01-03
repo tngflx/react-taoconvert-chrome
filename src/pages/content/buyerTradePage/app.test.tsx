@@ -1,6 +1,6 @@
 import { describe, test } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import App from '@pages/app/app';
+//import App from '@pages/app/app';
 
 describe('appTest', () => {
   test('render text', () => {
@@ -8,7 +8,7 @@ describe('appTest', () => {
     const text = 'content view';
 
     // when
-    render(<App />);
+    //render(<App />);
 
     // then
     screen.getByText(text);

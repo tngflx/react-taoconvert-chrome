@@ -1,5 +1,8 @@
-import { CurrencyAPI } from "./utils/currencyAPI";
-import { MutationObserverManager, findParentElbyClassName } from "./utils/misc";
+import { render } from "react-dom";
+import { PriceBox } from "./priceBoxComponent";
+import { CurrencyAPI } from "../utils/currencyAPI";
+import { MutationObserverManager, DOMTools } from '../utils/misc';
+const { findParentElbyClassName} = new DOMTools;
 
 export async function injectScript() {
     //cariable declarion
@@ -74,18 +77,35 @@ export async function injectScript() {
 
 
 
-        createPriceBox(item_price_element, class_name) {
-            const item_price = item_price_element.textContent
+        createPriceBox(item_price_element, class_size) {
+            const item_price = item_price_element.textContent;
+
+            let taoConvertContainer = document.createElement('div');
+            taoConvertContainer.className = 'taoconvert_pricebox_container'
+
+            // Insert the new div element after the item_price_element
+            item_price_element.lastElementChild.insertAdjacentElement('afterend', taoConvertContainer);
+
 
             if (item_price.includes("-")) {
                 const original_price_arr = item_price.split("-");
-                const new_price_tag = `<div class="${class_name}"><i></i><span>≈ ${(parseFloat(original_price_arr[0].substring(1)) * currency_rate).toFixed(2)} - ${(parseFloat(original_price_arr[1]) * currency_rate).toFixed(2)} ${currency_change}</span></div>`;
-                item_price_element.lastElementChild.insertAdjacentHTML('afterend', new_price_tag);
+                const converted_price_range = [
+                    (parseFloat(original_price_arr[0].substring(1)) * currency_rate).toFixed(2),
+                    (parseFloat(original_price_arr[1]) * currency_rate).toFixed(2)
+                ];
+
+                render(
+                    <PriceBox convertedPriceRange={converted_price_range} currencyChange={currency_change} size={class_size} />,
+                    taoConvertContainer
+                );
             } else {
                 const original_price = parseFloat(item_price.substring(1));
                 const converted_price = (original_price * currency_rate).toFixed(2);
-                const newPriceTagHtml = `<div class="${class_name}"><i></i><span>≈ ${converted_price} ${currency_change}</span></div>`;
-                item_price_element.lastElementChild.insertAdjacentHTML('afterend', newPriceTagHtml);
+
+                render(
+                    <PriceBox convertedPrice={converted_price} currencyChange={currency_change} size={class_size} />,
+                    taoConvertContainer
+                );
             }
         }
 
@@ -197,8 +217,17 @@ export async function injectScript() {
                     let priceSalesSpan = findParentElbyClassName(price_wrapper_element, 'realSales') as HTMLElement;
                     priceSalesSpan.style["line-height"] = "20px";
 
-                    price_wrapper_element.classList.add('taoconvert_pricebox_container');
-                    price_float_element.insertAdjacentHTML('afterend', '<div class="taoconvert_pricebox_tag sm"><i></i><span> ≈ ' + converted_price + ' ' + currency_change + '</span></div>');
+                    //price_wrapper_element.classList.add('taoconvert_pricebox_container');
+
+                    let newDiv = document.createElement('div')
+                    newDiv.className = 'taoconvert_pricebox_container'
+                    let newDivEl = price_float_element.insertAdjacentElement('afterend', newDiv)
+
+                    render(
+                        <PriceBox size='sm' convertedPrice={converted_price} currencyChange={currency_change} />,
+                        newDivEl
+                    );
+
 
                 }
             }
@@ -257,10 +286,10 @@ export async function injectScript() {
             const original_price_element = document.getElementById('J_StrPrice')
 
             if (promo_price_element) {
-                sharedUtility.createPriceBox(promo_price_element, "taoconvert_pricebox_tag")
-                sharedUtility.createPriceBox(original_price_element, "taoconvert_pricebox_tag md")
+                sharedUtility.createPriceBox(promo_price_element, "")
+                sharedUtility.createPriceBox(original_price_element, "md")
             } else
-                sharedUtility.createPriceBox(original_price_element, "taoconvert_pricebox_tag lg")
+                sharedUtility.createPriceBox(original_price_element, "lg")
         }
     }
 
@@ -303,10 +332,17 @@ export async function injectScript() {
                 const converted_price = (parseFloat(tmall_price) * currency_rate).toFixed(2);
                 const newPriceTagHtml = `<div class="taoconvert_pricebox_tag"><i></i><span>≈ ${converted_price} ${currency_change}</span></div>`;
 
-                const salePriceRelativeWrapElement = tmall_discounted_price_element.closest('[class^="Price--sale--"]')
-                salePriceRelativeWrapElement.style["margin-bottom"] = '10px'
+                // Get the main wrapper for discount price element so that we can style it
+                let salePriceRelativeWrapElement = tmall_discounted_price_element.closest('[class^="Price--sale--"]')
 
-                salePriceRelativeWrapElement.insertAdjacentHTML('afterend', newPriceTagHtml);
+                if (salePriceRelativeWrapElement) {
+                    salePriceRelativeWrapElement.insertAdjacentHTML('afterend', newPriceTagHtml);
+
+                } else {
+                    salePriceRelativeWrapElement = tmall_discounted_price_element.closest('[class^="Price--priceWrap"]');
+                    salePriceRelativeWrapElement.insertAdjacentHTML('afterend', newPriceTagHtml);
+                }
+                salePriceRelativeWrapElement.style["margin-bottom"] = '10px'
 
             } else {
                 let tmall_price = tmall_original_price_element.textContent
