@@ -16,8 +16,6 @@ export async function injectScript() {
     //background-color: white;
     //line-height: 1;">You are currently using automatic price converter to Currency you set, the Currency you set price are not guarantee 100% accuracy.</div>`
 
-    // const timer = ms => new Promise(res => setTimeout(res, ms))
-
     chrome.runtime.onMessage.addListener(
         function (request) {
             if (request.action === "taobao_currency_choose") {

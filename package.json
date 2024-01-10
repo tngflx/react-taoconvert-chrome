@@ -1,11 +1,11 @@
 {
-  "name": "chrome-extension-boilerplate-react-vite",
+  "name": "taoConvert",
   "version": "0.0.1",
-  "description": "chrome extension boilerplate",
+  "description": "Auto convert prices on taobao/ tmall website, even though you didn't switch places",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite.git"
+    "url": ""
   },
   "scripts": {
     "build": "tsc --noEmit && vite build",
@@ -28,6 +28,7 @@
     "construct-style-sheets-polyfill": "3.1.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-router-dom": "^6.21.1",
     "webextension-polyfill": "0.10.0"
   },
   "devDependencies": {
@@ -43,6 +44,7 @@
     "@typescript-eslint/eslint-plugin": "6.10.0",
     "@typescript-eslint/parser": "6.9.1",
     "@vitejs/plugin-react": "4.2.0",
+    "autoprefixer": "^10.4.16",
     "chokidar": "3.5.3",
     "cross-env": "7.0.3",
     "eslint": "8.53.0",
@@ -54,19 +56,21 @@
     "eslint-plugin-react": "7.33.2",
     "eslint-plugin-react-hooks": "4.6.0",
     "fs-extra": "11.1.1",
+    "husky": "^8.0.0",
     "jsdom": "^22.1.0",
     "lint-staged": "15.0.2",
     "npm-run-all": "4.1.5",
+    "postcss-import": "^16.0.0",
     "prettier": "3.1.0",
     "rollup": "4.3.0",
     "sass": "1.69.5",
+    "tailwindcss": "^3.4.1",
     "ts-loader": "9.5.0",
     "tslib": "2.6.2",
     "typescript": "5.2.2",
     "vite": "5.0.0",
     "vitest": "^0.34.6",
-    "ws": "8.14.2",
-    "husky": "^8.0.0"
+    "ws": "8.14.2"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
