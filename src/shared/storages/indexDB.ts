@@ -17,14 +17,15 @@ interface IWrite<T> {
 interface IDataAccess<T extends Item> extends IRead<T>, IWrite<T> { }
 
 export class Item {
-    orderId: string;
-    product_title: string;
-    bought_price: string;
-    product_web_link: string;
-    product_image_url: string;
-    tracking_info?: any
+    orderId: string
+    product_main_title: string
+    product_selected_title: string
+    bought_price: number
+    bought_quantity: number
+    product_web_link: string
+    product_image_url: string
+    product_create_time: number
 }
-
 export class DBAccess implements IDBAccess {
     private dbAccess: DBAccess;
     private db: IDBDatabase;
@@ -123,6 +124,15 @@ class DataAccess<T extends Item> implements IDataAccess<T> {
         const request = db.transaction([this.storeName], 'readwrite')
             .objectStore(this.storeName)
             .delete(orderId);
+
+        return this.requestHandler(request);
+    }
+
+    async clear() {
+        const db = await this.connection;
+        const request = db.transaction([this.storeName], 'readwrite')
+            .objectStore(this.storeName)
+            .clear();
 
         return this.requestHandler(request);
     }

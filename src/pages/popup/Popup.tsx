@@ -69,6 +69,7 @@ const Popup = () => {
                 <Route path="/" element={<Container />}>
                     <Route index element={<Home />} />
                     <Route path="savedlisting" element={<SavedLists />} />
+                    <Route path="autoUploadTopup" element={<autoUploadTopup />} />
                 </Route>
             </Routes>
         </MemoryRouter>

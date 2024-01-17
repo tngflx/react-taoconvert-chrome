@@ -1,2 +1,2 @@
-import('./priceConvInjected')
-import('./style.scss')
+//import './priceBoxComponent'
+import ('@pages/content/priceConvert/priceConvInjected')

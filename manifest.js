@@ -9,7 +9,7 @@ const manifest = {
     name: packageJson.name,
     version: packageJson.version,
     description: packageJson.description,
-    permissions: ['storage', 'sidePanel', "cookies", "unlimitedStorage"],
+    permissions: ['storage', 'sidePanel', "cookies", "unlimitedStorage", "tabs"],
     host_permissions: ["<all_urls>"],
     background: {
         service_worker: 'src/pages/background/index.js',
@@ -24,17 +24,19 @@ const manifest = {
     },
     content_scripts: [
         {
-            matches: ['https://s.taobao.com/*', 'https://world.taobao.com/*', "https://item.taobao.com/*", '<all_urls>'],
+            matches: ['https://s.taobao.com/*', 'https://world.taobao.com/*', "https://item.taobao.com/*"],
             js: ['src/pages/priceConvert/index.js'],
             // KEY for cache invalidation
-            css: ['assets/css/priceConvertStyle<KEY>.chunk.css'],
-            "type": "module"
+            css: ['assets/css/priceConvStyle<KEY>.chunk.css'],
         },
         {
             matches: ["https://buyertrade.taobao.com/*"],
             js: ['src/pages/buyerTrade/index.js'],
-            // KEY for cache invalidation
-            css: ['assets/css/priceConvertStyle<KEY>.chunk.css'],
+            css: ['assets/css/buyerTradeStyle.chunk.css'],
+        },
+        {
+            matches: ["https://nswex.com/*"],
+            js: ['src/pages/freightPage/index.js']
         }
     ],
     web_accessible_resources: [

@@ -1,7 +1,7 @@
-﻿export const injectScript = () => {
-    chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+﻿chrome.runtime.onConnect.addListener(function (port) {
+    port.onMessage.addListener(request => {
         if (request.action === 'nswex_fill_form') {
-            const { product_main_title, product_selected_title, bought_price, bought_quantity, product_web_link, product_image_url, orderId, tracking_info } = request
+            const { product_main_title, product_selected_title, bought_price, bought_quantity, product_web_link, product_image_url, orderId, tracking_info, product_create_time } = request
 
             const form_wrapper = document.querySelector('#shipping_product-row0')
             let express_name_lists = document.querySelectorAll("select[name='shipping_product[0][express_company]'] option")
@@ -26,8 +26,5 @@
             inputElements[4].value = String(bought_price / 10)
 
         }
-    });
-
-}
-
-injectScript()
+    })
+})

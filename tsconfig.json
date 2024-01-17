@@ -1,21 +1,16 @@
 {
   "compilerOptions": {
-    "noEmit": true,
-    "baseUrl": ".",
     "allowJs": false,
-    "target": "esnext",
-    "module": "esnext",
-    "jsx": "react-jsx",
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "types": [ "vite/client", "node" ],
-    "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true,
-    "lib": [ "dom", "dom.iterable", "esnext" ],
+    "baseUrl": ".",
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "typeRoots": [ "./src/global.d.ts", "node_modules/@types" ],
+    "jsx": "react-jsx",
+    "lib": [ "dom", "dom.iterable", "esnext" ],
+    "module": "esnext",
+    "moduleResolution": "Node",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
     "paths": {
       "@root/*": [ "./*" ],
       "@src/*": [ "src/*" ],
@@ -23,7 +18,12 @@
       "@pages/*": [ "src/pages/*" ],
       "virtual:reload-on-update-in-background-script": [ "./src/global.d.ts" ],
       "virtual:reload-on-update-in-view": [ "./src/global.d.ts" ]
-    }
+    },
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "target": "esnext",
+    "typeRoots": [ "./src/global.d.ts", "node_modules/@types" ],
+    "types": [ "vite/client", "node" ]
   },
   "include": ["src", "utils", "vite.config.ts", "node_modules/@types"]
 }

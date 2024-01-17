@@ -47,14 +47,18 @@ export class DOMTools {
         return matchingElements;
     }
 
-    checkClassNameInChildEl(element: Element, class_name: string) {
-        if (element.className && typeof element.className === 'string' && element.className.includes(class_name)) {
+    checkNodeExistsInChildEl = (element: Element, class_or_id: string) => {
+        if (element.className && typeof element.className === 'string' && element.className.includes(class_or_id)) {
+            return true;
+        }
+
+        if (element.id && element.id === class_or_id) {
             return true;
         }
 
         if (element.childNodes.length > 0) {
             return Array.from(element.childNodes).some(child =>
-                child.nodeType === 1 && this.checkClassNameInChildEl(child as Element, class_name)
+                child.nodeType === 1 && this.checkNodeExistsInChildEl(child as Element, class_or_id)
             );
         }
 
@@ -62,6 +66,7 @@ export class DOMTools {
     }
 }
 export class MutationObserverManager extends DOMTools {
+    errorCodes: Record<string, string>;
     config: { mode: string; mutatedTargetChildNode: string; mutatedTargetParentNode: string; subtree: boolean; };
     foundTargetNode: boolean;
     mutatedTargetParentNode: Element | null;
@@ -70,6 +75,12 @@ export class MutationObserverManager extends DOMTools {
 
     constructor() {
         super();
+        this.errorCodes = {
+            elementNotFound: "Element not found.",
+            emptyConfig: "Config for MutationObserverManager is empty. Please provide valid configuration.",
+            noSpecifiedCase: "Switch statement doesn't have any suitable case"
+        }
+
         this.config = { mode: '', mutatedTargetChildNode: '', mutatedTargetParentNode: '', subtree: false };
         this.foundTargetNode = false
         this.mutatedTargetParentNode = null
@@ -85,13 +96,15 @@ export class MutationObserverManager extends DOMTools {
             this.mutatedTargetParentNode = targetElement
             this.mutatedTargetChildNode = mutatedTargetChildNode
             this.subtree = subtree
-        } else console.error(`Element with selector '${mutatedTargetParentNode}' not found.`);
+        } else {
+            // Not to throw error here as mutationObserver can still observe unloaded elements
+            console.error(this.errorCodes['elementNotFound'] + '' + mutatedTargetParentNode);
+        }
 
-        console.log(`parent: ${mutatedTargetParentNode}, mode: ${mode}, mutatedChild: ${mutatedTargetChildNode}`)
+        console.log(`mutate.startObserver func/ parent: ${mutatedTargetParentNode}, mode: ${mode}, mutatedChild: ${mutatedTargetChildNode}`)
 
         if (!mode || !mutatedTargetChildNode) {
-            console.error('Config for mutationObserverManager is empty. Please provide valid configuration.');
-            return -1; // or handle it in another way based on your requirements
+            throw Error(this.errorCodes['emptyConfig']);
         }
 
         const observer = new MutationObserver((mutationsList, observer) => {
@@ -101,7 +114,7 @@ export class MutationObserverManager extends DOMTools {
 
                         if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                             return Array.from(mutation.addedNodes).some(node =>
-                                this.checkClassNameInChildEl(node as Element, mutatedTargetChildNode)
+                                this.checkNodeExistsInChildEl(node as Element, mutatedTargetChildNode)
                             );
                         }
                         return false;
@@ -114,7 +127,7 @@ export class MutationObserverManager extends DOMTools {
                     this.foundTargetNode = mutationsList.some(mutation =>
                         mutation.type === 'childList' &&
                         Array.from(mutation.removedNodes).some(node =>
-                            this.checkClassNameInChildEl(node as Element, mutatedTargetChildNode)
+                            this.checkNodeExistsInChildEl(node as Element, mutatedTargetChildNode)
 
                         )
                     );
@@ -133,13 +146,13 @@ export class MutationObserverManager extends DOMTools {
                     this.stopObserverBeforeDomChanges(observer, callback)
                     break;
                 default:
+                    throw Error(this.errorCodes['noSpecifiedCase']);
             }
 
         });
-        if (targetElement)
-            observer.observe(targetElement, { childList: true, subtree });
 
-
+        // To init observe on targetelement
+        observer.observe(targetElement, { childList: true, subtree });
     }
 
     stopObserverBeforeDomChanges(observer, callback) {

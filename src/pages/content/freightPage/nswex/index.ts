@@ -1,1 +1,1 @@
-import('@pages/content/freightPage/nswex/NswexInjected')
+import '@pages/content/freightPage/nswex/NswexInjected'

@@ -8,6 +8,12 @@ reloadOnUpdate('pages/background');
  * Extension reloading is necessary because the browser automatically caches the css.
  * If you do not use the css of the content script, please delete it.
  */
+interface TrackingInfo {
+    expressId: string;
+    expressName: string;
+    // Add other properties if necessary
+}
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (request.action === "get_tracking_code") {
         chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
@@ -28,8 +34,8 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 .then(response => response.arrayBuffer())
                 .then(async data => {
                     const decoder = new TextDecoder('gbk');
-                    data = JSON.parse(decoder.decode(data));
-                    const { expressName, expressId } = data as any;
+                    const parsedData: TrackingInfo = JSON.parse(decoder.decode(data));
+                    const { expressName, expressId } = parsedData;
 
                     sendResponse({ expressId, expressName })
                 })
@@ -54,19 +60,38 @@ chrome.runtime.onConnect.addListener((port) => {
         popupPort = port;
 
         // Listen for messages from the content script
-        port.onMessage.addListener((resp) => {
-            const { msg_action } = resp;
+        port.onMessage.addListener(async (resp) => {
+            const { msg_action, orderId, tracking_info, ...rest } = resp;
             switch (msg_action) {
                 case 'get_tracking_info':
 
-                case 'save_db':
-                    console.log(resp)
-                    const { orderId, ...rest } = resp;
-                    idb.add({ orderId, ...rest })
+                case 'is_freight_processed':
+                    const freight_html = await checkFreightIfTrackingExists(tracking_info?.expressId)
+                    resp.freight_html = freight_html;
+                    delete resp.msg_action; //Bug in chrome where msg_action will stuck on previous call
+
+                    port.postMessage({ msg_action: "process_freight_html", ...resp })
+                    //idb.add({ orderId, ...rest })
                     break;
 
+                case 'save_db':
+                    idb.add({ orderId, tracking_info, ...rest })
+                    break;
                 default:
             }
         });
     }
 });
+
+
+function checkFreightIfTrackingExists(expressId) {
+    const trackingEndpoint = `https://nswex.com/index.php?route=account/order&filter_order_status=5&filter_tracking_number=${expressId}`;
+
+    // Fetch the HTML content from the endpoint
+    return fetch(trackingEndpoint)
+        .then(response => response.text())
+        .then(html => html)
+        .catch(error => {
+            console.error('Error fetching or parsing HTML:', error);
+        });
+}

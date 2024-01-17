@@ -1,8 +1,8 @@
 export const ButtonComponent = ({ onClick }) => (
     <button
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-flex items-center"
+        className="bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
         onClick={onClick}
     >
-        TaoConv Import
+        TaoImport
     </button>
 );

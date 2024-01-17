@@ -6,6 +6,7 @@ import makeManifest from './utils/plugins/make-manifest';
 import customDynamicImport from './utils/plugins/custom-dynamic-import';
 import addHmr from './utils/plugins/add-hmr';
 import watchRebuild from './utils/plugins/watch-rebuild';
+import removeVitePreload from './utils/plugins/replace-code';
 
 const rootDir = resolve(__dirname);
 const srcDir = resolve(rootDir, 'src');
@@ -36,6 +37,9 @@ export default defineConfig({
         }),
         react(),
         customDynamicImport(),
+        removeVitePreload({
+            include: '**/index.js'
+        }),
         addHmr({ background: enableHmrInBackgroundScript, view: true }),
         isDev && watchRebuild({ afterWriteBundle: regenerateCacheInvalidationKey }),
     ],
@@ -45,17 +49,17 @@ export default defineConfig({
         /** Can slow down build speed. */
         // sourcemap: isDev,
         minify: isProduction,
-        modulePreload: {
-        polyfill:false
-        },
+        modulePreload: false,
         reportCompressedSize: isProduction,
         emptyOutDir: !isDev,
         rollupOptions: {
             input: {
-                buyerTrade: resolve(pagesDir, 'content', 'buyerTradePage', 'index.ts'),
                 priceConvert: resolve(pagesDir, 'content', 'priceConvert', 'index.ts'),
+                priceConvStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
+                buyerTrade: resolve(pagesDir, 'content', 'buyerTradePage', 'index.ts'),
+                buyerTradeStyle: resolve(pagesDir, 'content', 'buyerTradePage', 'injected.css'),
+                freightPage: resolve(pagesDir, 'content', 'freightPage', 'nswex','index.ts'),
                 background: resolve(pagesDir, 'background', 'index.ts'),
-                priceConvertStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
                 popup: resolve(pagesDir, 'popup', 'index.html')
             },
             output: {
@@ -63,11 +67,12 @@ export default defineConfig({
                 chunkFileNames: isDev ? 'assets/js/[name].js' : 'assets/js/[name].[hash].js',
                 assetFileNames: assetInfo => {
                     const { name } = path.parse(assetInfo.name);
-                    const assetFileName = name === 'priceConvertStyle' ? `${name}${getCacheInvalidationKey()}` : name;
+                    const assetFileName = name === 'priceConvStyle' ? `${name}${getCacheInvalidationKey()}` : name;
                     return `assets/[ext]/${assetFileName}.chunk.[ext]`;
                 },
             },
         },
+        
     },
     test: {
         globals: true,
