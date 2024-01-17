@@ -7,9 +7,9 @@ const port = chrome.runtime.connect({ name: 'content-script' });
 
 const createButtonAndAppend = (element, onClickHandler) => {
     const button_wrapper = document.createElement('div');
+    button_wrapper.classList.add('tao_convert_button');
 
-    const handle_click = () => onClickHandler(element);
-    render(<ButtonComponent onClick={handle_click} />, button_wrapper);
+    render(<ButtonComponent onClick={() => onClickHandler(element)} />, button_wrapper);
     element.appendChild(button_wrapper);
 };
 

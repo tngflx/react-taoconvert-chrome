@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss'
 
 export default {
-    content: ["./src/**/*.{js,jsx,ts,tsx,html}"],
+    content: ["src/**/*.{js,jsx,ts,tsx,html}"],
     presets: [],
     darkMode: 'media', // or 'class'
     theme: {

@@ -8,6 +8,6 @@
  *
 */
 import('@pages/content/priceConvert/priceBoxComponent')
-import('@pages/content/priceConvert/injected')
-import('@pages/content/buyerTradePage/injected')
-import('@pages/content/freightPage/nswex/injected')
+import('@pages/content/priceConvert/priceConvInjected')
+import('@pages/content/buyerTradePage/BuyerTradeInjected')
+import('@pages/content/freightPage/nswex/NswexInjected')

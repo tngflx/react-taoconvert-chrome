@@ -2,9 +2,10 @@ import { render } from "react-dom";
 import { PriceBox } from "./priceBoxComponent";
 import { CurrencyAPI } from "../utils/currencyAPI";
 import { MutationObserverManager, DOMTools } from '../utils/misc';
-const { findParentElbyClassName} = new DOMTools;
+const { findParentElbyClassName } = new DOMTools;
 
-export async function injectScript() {
+(() => {
+
     //cariable declarion
     let currency_change = "USD";
     let currency_rate = 0
@@ -367,6 +368,4 @@ export async function injectScript() {
 
         }
     }
-}
-
-void injectScript();
+})()

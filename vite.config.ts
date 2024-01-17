@@ -45,14 +45,17 @@ export default defineConfig({
         /** Can slow down build speed. */
         // sourcemap: isDev,
         minify: isProduction,
-        modulePreload: false,
+        modulePreload: {
+        polyfill:false
+        },
         reportCompressedSize: isProduction,
         emptyOutDir: !isDev,
         rollupOptions: {
             input: {
-                content: resolve(pagesDir, 'content', 'index.ts'),
+                buyerTrade: resolve(pagesDir, 'content', 'buyerTradePage', 'index.ts'),
+                priceConvert: resolve(pagesDir, 'content', 'priceConvert', 'index.ts'),
                 background: resolve(pagesDir, 'background', 'index.ts'),
-                contentStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
+                priceConvertStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
                 popup: resolve(pagesDir, 'popup', 'index.html')
             },
             output: {
@@ -60,7 +63,7 @@ export default defineConfig({
                 chunkFileNames: isDev ? 'assets/js/[name].js' : 'assets/js/[name].[hash].js',
                 assetFileNames: assetInfo => {
                     const { name } = path.parse(assetInfo.name);
-                    const assetFileName = name === 'contentStyle' ? `${name}${getCacheInvalidationKey()}` : name;
+                    const assetFileName = name === 'priceConvertStyle' ? `${name}${getCacheInvalidationKey()}` : name;
                     return `assets/[ext]/${assetFileName}.chunk.[ext]`;
                 },
             },

@@ -24,11 +24,18 @@ const manifest = {
     },
     content_scripts: [
         {
-            matches: ['http://*/*', 'https://*/*', '<all_urls>'],
-            js: ['src/pages/content/index.js'],
+            matches: ['https://s.taobao.com/*', 'https://world.taobao.com/*', "https://item.taobao.com/*", '<all_urls>'],
+            js: ['src/pages/priceConvert/index.js'],
             // KEY for cache invalidation
-            css: ['assets/css/contentStyle<KEY>.chunk.css'],
+            css: ['assets/css/priceConvertStyle<KEY>.chunk.css'],
+            "type": "module"
         },
+        {
+            matches: ["https://buyertrade.taobao.com/*"],
+            js: ['src/pages/buyerTrade/index.js'],
+            // KEY for cache invalidation
+            css: ['assets/css/priceConvertStyle<KEY>.chunk.css'],
+        }
     ],
     web_accessible_resources: [
         {
