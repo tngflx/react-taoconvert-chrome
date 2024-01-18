@@ -24,7 +24,7 @@ const manifest = {
     },
     content_scripts: [
         {
-            matches: ['https://s.taobao.com/*', 'https://world.taobao.com/*', "https://item.taobao.com/*"],
+            matches: ["https://*.taobao.com/*", "https://*.tmall.com/*"],
             js: ['src/pages/priceConvert/index.js'],
             // KEY for cache invalidation
             css: ['assets/css/priceConvStyle<KEY>.chunk.css'],

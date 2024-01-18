@@ -1,7 +1,7 @@
 import { render } from 'react-dom';
 import { MutationObserverManager, DOMTools } from '../utils/misc';
 import { ButtonComponent } from '../components/buyerTradeButton';
-const { findParentElbyClassName, checkNodeExistsInChildEl } = new DOMTools
+const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = new DOMTools
 
 const port = chrome.runtime.connect({ name: 'content-script' });
 
@@ -71,7 +71,7 @@ port.onMessage.addListener(async (resp) => {
         let bought_wrapper_elements = Array.from(document.querySelectorAll(buyerTradeDivToObserve))
 
         for (let bought_wrapper_element of bought_wrapper_elements.slice(0, 15) as Element[]) {
-            const bottom_row_buyertrade_wrapper_el = findParentElbyClassName(bought_wrapper_element, 'sol-mod__no-br', 'td');
+            const bottom_row_buyertrade_wrapper_el = findChildThenParentElbyClassName(bought_wrapper_element, 'sol-mod__no-br', 'td');
 
             // buyer trade page column 1 2 3
             const columns = Array.from(bottom_row_buyertrade_wrapper_el.parentNode.children).filter(child => child.nodeType === 1);
@@ -85,10 +85,10 @@ port.onMessage.addListener(async (resp) => {
             const product_web_link = 'https:' + columns[0].querySelector("div[style^='margin-left'] a")?.getAttribute('href');
             const bought_quantity = columns[2].querySelector("p")?.textContent
 
-            const price_mod_el = findParentElbyClassName(columns[4], "price-mod__price")
+            const price_mod_el = findChildThenParentElbyClassName(columns[4], "price-mod__price")
             const bought_price = price_mod_el.querySelectorAll('strong span')?.[1]?.textContent
 
-            const upper_row_buyertrade_wrapper_el = findParentElbyClassName(bought_wrapper_element, 'bought-wrapper-mod__head-info-cell')
+            const upper_row_buyertrade_wrapper_el = findChildThenParentElbyClassName(bought_wrapper_element, 'bought-wrapper-mod__head-info-cell')
             const orderId = upper_row_buyertrade_wrapper_el.querySelectorAll("span[data-reactid]")?.[5]?.textContent
             const product_create_time = upper_row_buyertrade_wrapper_el.querySelector("span[class^='bought-wrapper-mod__create-time']")?.textContent
 
