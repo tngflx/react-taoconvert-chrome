@@ -2,19 +2,22 @@ import packageJson from './package.json' assert { type: 'json' };
 
 /**
  * After changing, please reload the extension at `chrome://extensions`
- * @type {chrome.runtime.ManifestV3}
  */
-const manifest = {
+const manifest: chrome.runtime.ManifestV3 = {
     manifest_version: 3,
     name: packageJson.name,
     version: packageJson.version,
     description: packageJson.description,
-    permissions: ['storage', 'sidePanel', "cookies", "unlimitedStorage", "tabs"],
-    host_permissions: ["<all_urls>"],
+    permissions: [
+        'storage', 'sidePanel', "cookies", "background", "webRequest",
+        "unlimitedStorage", "tabs", "debugger", "webNavigation"
+    ],
+    host_permissions: ["*://*/*"],
     background: {
         service_worker: 'src/pages/background/index.js',
         type: 'module',
     },
+    devtools_page: 'src/pages/devtools/index.html',
     action: {
         default_popup: 'src/pages/popup/index.html',
         default_icon: 'icon-34.png',
@@ -24,15 +27,15 @@ const manifest = {
     },
     content_scripts: [
         {
-            matches: ["https://*.taobao.com/*", "https://*.tmall.com/*"],
-            js: ['src/pages/priceConvert/index.js'],
-            // KEY for cache invalidation
-            css: ['assets/css/priceConvStyle<KEY>.chunk.css'],
-        },
-        {
             matches: ["https://buyertrade.taobao.com/*"],
             js: ['src/pages/buyerTrade/index.js'],
-            css: ['assets/css/buyerTradeStyle.chunk.css'],
+            css:['assets/css/buyerTradeStyle.chunk.css']
+        },
+        {
+            matches: ["https://s.taobao.com/*", "https://item.taobao.com/*", "https://world.taobao.com/*", "https://*.tmall.com/*"],
+            js: ['src/pages/priceConvert/index.js'],
+            // KEY for cache invalidation
+            css: ['assets/css/priceConvStyle.chunk.css']
         },
         {
             matches: ["https://nswex.com/*"],

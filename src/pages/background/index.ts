@@ -15,36 +15,102 @@ interface TrackingInfo {
 }
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.action === "get_tracking_code") {
-        chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
-            // Extract the necessary cookies from the cookies array
-            const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+    switch (request?.action) {
+        case 'get_tracking_code':
+            chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
+                // Extract the necessary cookies from the cookies array
+                const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
 
-            const apiUrl = `https://buyertrade.taobao.com/trade/json/transit_step.do?bizOrderId=${request.orderId}`
+                const apiUrl = `https://buyertrade.taobao.com/trade/json/transit_step.do?bizOrderId=${request.orderId}`
 
-            // Make a request to the internal API with the extracted cookies
-            fetch(apiUrl, {
-                method: "GET",  // or "POST" depending on your API
-                headers: {
-                    "Cookie": cookieString,
-                    "Accept": "application/json",
-                },
-                // Add any other options or parameters required by your API
-            })
-                .then(response => response.arrayBuffer())
-                .then(async data => {
-                    const decoder = new TextDecoder('gbk');
-                    const parsedData: TrackingInfo = JSON.parse(decoder.decode(data));
-                    const { expressName, expressId } = parsedData;
-
-                    sendResponse({ expressId, expressName })
+                // Make a request to the internal API with the extracted cookies
+                fetch(apiUrl, {
+                    method: "GET",  // or "POST" depending on your API
+                    headers: {
+                        "Cookie": cookieString,
+                        "Accept": "application/json",
+                    },
+                    // Add any other options or parameters required by your API
                 })
-                .catch(error => {
-                    console.error("Error querying internal API:", error);
-                    sendResponse({ status: false, error: error.message });
+                    .then(response => response.arrayBuffer())
+                    .then(async data => {
+                        const decoder = new TextDecoder('gbk');
+                        const parsedData: TrackingInfo = JSON.parse(decoder.decode(data));
+                        const { expressName, expressId } = parsedData;
 
-                });
-        });
+                        sendResponse({ expressId, expressName })
+                    })
+                    .catch(error => {
+                        console.error("Error querying internal API:", error);
+                        sendResponse({ status: false, error: error.message });
+
+                    });
+            });
+            break;
+        case 'get_itempage_products':
+            const params = {
+                jsv: '2.6.1',
+                appKey: 12574478,
+                t: 1705902514018,
+                sign: 'ba4d7b884aa44ed322dcea5681485333',
+                api: 'mtop.taobao.pcdetail.data.get',
+                v: '1.0',
+                isSec: 0,
+                ecode: 0,
+                timeout: 10000,
+                ttid: '2022@taobao_litepc_9.17.0',
+                AntiFlood: true,
+                AntiCreep: true,
+                dataType: 'json',
+                valueType: 'string',
+                preventFallback: true,
+                type: 'json',
+                data: {
+                    id: '712767031587',
+                    detail_v: '3.3.2',
+                    exParams: '{"_u":"m20bhahd1d9818","id":"712767031587","spm":"a1z09.2.0.0.753f2e8dRe00I1","queryParams":"_u=m20bhahd1d9818&id=712767031587&spm=a1z09.2.0.0.753f2e8dRe00I1","domain":"https://item.taobao.com","path_name":"/item.htm"}'
+                }
+            };
+
+            const queryString = Object.entries(params)
+                .map(([key, value]) => {
+                    if (key === 'data') {
+                        // If the key is 'data', stringify the value
+                        value = JSON.stringify(value);
+                    }
+                    return `${key}=${encodeURIComponent(value as any)}`;
+                })
+                .join("&");
+
+            const url = `https://h5api.m.taobao.com/h5/mtop.taobao.pcdetail.data.get/1.0/?${queryString}`;
+
+            chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
+                // Extract the necessary cookies from the cookies array
+                const cookieString = cookies
+                    .filter(cookie => cookie.name.includes('m_h5_tk'))
+                    .map(cookie => `${cookie.name}=${cookie.value}`)
+                    .join('; ');
+
+                fetch(url, {
+                    "headers": {
+                        "accept": "application/json",
+                        "cache-control": "no-cache",
+                        "content-type": "application/x-www-form-urlencoded",
+                        "pragma": "no-cache",
+                        "Cookie": cookieString
+                    },
+                    "method": "GET",
+                    "mode": "cors",
+                    "credentials": "include"
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                    });
+            });
+
+            break;
+        default:
     }
     // Bug in chrome api itself, need to return true, so it will wait for response
     return true;
@@ -95,3 +161,4 @@ function checkFreightIfTrackingExists(expressId) {
             console.error('Error fetching or parsing HTML:', error);
         });
 }
+

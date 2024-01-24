@@ -3,8 +3,13 @@ import { PriceBox } from "./priceBoxComponent";
 import { CurrencyAPI } from "../utils/currencyAPI";
 import { MutationObserverManager, DOMTools } from '../utils/misc';
 import { priceBoxRenderer } from "../utils/priceBoxRenderer";
+import { ItemPageButton } from "../components/itemPageButton";
+import { taoDownloader } from "../taoDownloader/taoDownloadInjected";
 const { findChildThenParentElbyClassName } = new DOMTools;
 
+// Create an instance of the CurrencyAPI class
+const currencyApi = new CurrencyAPI
+const mutObserverManager = new MutationObserverManager();
 //cariable declarion
 let currency_change = "USD";
 let currency_rate = 0
@@ -24,10 +29,6 @@ chrome.runtime.onMessage.addListener(
     }
 );
 
-
-// Create an instance of the CurrencyAPI class
-const currencyApi = new CurrencyAPI
-const mutObserverManager = new MutationObserverManager();
 async function getCurrencyRate() {
     try {
         let storageData = await chrome.storage.sync.get({
@@ -65,11 +66,13 @@ async function getCurrencyRate() {
 
 }
 
-let boxRenderer;
+const boxRenderer = new priceBoxRenderer()
 
 getCurrencyRate()
     .then(currency_rate => {
-        boxRenderer = new priceBoxRenderer(currency_change, currency_rate)
+        boxRenderer.currency_rate = currency_rate
+        boxRenderer.currency_change = currency_change;
+
     })
 
 
@@ -77,11 +80,6 @@ getCurrencyRate()
 //effect only content in taobao home page
 if (location.href.includes("https://world.taobao.com/")) {
     let lastProcessedIndex = 0; // Variable to keep track of the last processed index
-
-    //window.onload = (event) => {
-
-    //    addConversionPrice();
-    //};
 
     mutObserverManager.config = { mode: 'addedNode', mutTargetChildName: 'item', domLoadedSourceParentNode: '.item-feed .list', subtree: false }
     mutObserverManager.startObserver(addConversionPrice);
@@ -161,7 +159,7 @@ if (location.href.includes("https://s.taobao.com/")) {
                 let converted_price = (original_price * currency_rate).toFixed(2);
 
                 let ancestor = price_wrapper_element.closest('a');
-                ancestor.style.height = "420px";
+                ancestor.style.height = "fit-content";
 
                 price_int_element.style.fontSize = "17px";
                 price_float_element.style.fontSize = "17px";
@@ -223,19 +221,14 @@ if (location.href.includes("https://s.taobao.com/")) {
 }
 
 
-
 /////////////////////////////////////[https://item.taobao.com/]/////////////////////////////////////
 //Affected only in taobao item page
 if (location.href.includes("https://item.taobao.com/")) {
 
-    const selectorsToCheck = [
-        "#J_StrPrice .tb-rmb-num",
-        "div[class^='Price--extraPrice']",
-        "div[class^='Price--originPrice']"
-    ];
-
     const itemPageDivToObserve = 'div[class^="Item--content"] [class^="BasicContent--itemInfo"]';
     mutObserverManager.config = { mode: 'addedText', mutTargetChildName: "Price--priceText", domLoadedSourceParentNode: itemPageDivToObserve, subtree: true }
+    let ran_before = false;
+
     mutObserverManager.startObserver(() => {
         boxRenderer.removeTrailingTaoConvPricebox()
 
@@ -259,44 +252,23 @@ if (location.href.includes("https://item.taobao.com/")) {
             let price_wrapper_el = itempage_origin_price_el.closest('[class^="Price--root"]');
             boxRenderer.createPriceBox(price_wrapper_el, "")
         }
+
+        createDownloadListsButton()
     })
 
+    function createDownloadListsButton() {
+        if (ran_before === false) {
+            const item_header_el = document.querySelector('[class^="ItemHeader--subTitle"]')
 
-    //if (itemPageDivToObserve?.includes('J_StrPrice')) {
-    //    mutObserverManager.config = { mode: 'removedText', mutatedTargetChildNode: "tb-rmb-num", mutatedTargetParentNode:itemPageDivToObserve, subtree: false }
-    //    mutObserverManager.startObserver(() => {
-    //        sharedUtility.removeTrailingTaoConvPricebox()
+            const new_button_wrapper = document.createElement('div');
+            new_button_wrapper.className = 'tao_convert_download_button';
 
-    //        const promo_price_element = document.querySelector('strong.tb-promo-price')
-    //        const original_price_element = document.getElementById('J_StrPrice')
+            render(<ItemPageButton onClick={taoDownloader} />, new_button_wrapper);
+            item_header_el.appendChild(new_button_wrapper);
+            ran_before = true;
+        }
+    }
 
-    //        if (promo_price_element) {
-    //            sharedUtility.createPriceBox(promo_price_element.lastElementChild, "")
-    //            sharedUtility.createPriceBox(original_price_element.lastElementChild, "md")
-    //        } else
-    //            sharedUtility.createPriceBox(original_price_element.lastElementChild, "lg")
-    //    })
-
-    //} else if (itemPageDivToObserve?.includes('extraPrice')) {
-    //    mutObserverManager.config = { mode: 'removedText', mutatedTargetChildNode: "[class^='Price--priceText']", mutatedTargetParentNode: itemPageDivToObserve, subtree: false }
-    //    mutObserverManager.startObserver(() => {
-    //        sharedUtility.removeTrailingTaoConvPricebox()
-
-    //        const extra_price_el = document.querySelector(itemPageDivToObserve)
-    //        let price_wrapper_el = extra_price_el.closest('[class^="Price--priceWrap"]');
-    //        sharedUtility.createPriceBox(price_wrapper_el, "")
-    //    })
-
-    //} else if (itemPageDivToObserve?.includes('originPrice')) {
-    //    mutObserverManager.config = { mode: 'removedText', mutatedTargetChildNode: "[class^='Price--priceText']", mutatedTargetParentNode: itemPageDivToObserve, subtree: false }
-    //    mutObserverManager.startObserver(() => {
-    //        sharedUtility.removeTrailingTaoConvPricebox()
-
-    //        const extra_price_el = document.querySelector(itemPageDivToObserve)
-    //        let price_wrapper_el = extra_price_el.closest('[class^="Price--priceWrap"]');
-    //        sharedUtility.createPriceBox(price_wrapper_el, "")
-    //    })
-    //}
 
 }
 
@@ -328,22 +300,17 @@ if (urlPattern.test(location.href)) {
             boxRenderer.removeTrailingTaoConvPricebox()
             let tmall_price = tmall_extra_price_el.textContent
             const converted_price = (parseFloat(tmall_price) * currency_rate).toFixed(2);
-            const newPriceTagHtml = `<div class="taoconvert_pricebox_tag"><i></i><span>≈ ${converted_price} ${currency_change}</span></div>`;
 
             // Get the main wrapper for discount price element so that we can style it
             let salePriceRelativeWrapElement = tmall_extra_price_el.closest('[class^="Price--sale--"]')
+            salePriceRelativeWrapElement = salePriceRelativeWrapElement ? salePriceRelativeWrapElement : tmall_extra_price_el.closest('[class^="Price--priceWrap"]');
 
             if (salePriceRelativeWrapElement) {
-                boxRenderer.createPriceBox(tmall_extra_price_el, '')
-                //salePriceRelativeWrapElement.insertAdjacentHTML('afterend', newPriceTagHtml);
-
-            } else {
-                salePriceRelativeWrapElement = tmall_extra_price_el.closest('[class^="Price--priceWrap"]');
-                boxRenderer.createPriceBox(tmall_extra_price_el, '')
-            }
+                boxRenderer.createPriceBox(tmall_extra_price_el, 'lg', salePriceRelativeWrapElement)
+            } else throw Error('no price wrapper element found')
             salePriceRelativeWrapElement.style["margin-bottom"] = '10px'
 
-        } else if(tmall_origin_price_el){
+        } else if (tmall_origin_price_el) {
             boxRenderer.removeTrailingTaoConvPricebox()
 
             let tmall_price = tmall_origin_price_el.textContent

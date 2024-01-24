@@ -4,23 +4,32 @@ import { PriceBox } from "../priceConvert/priceBoxComponent";
 
 const { findChildThenParentElbyClassName } = new DOMTools;
 export class priceBoxRenderer {
-    currency_change: string;
-    currency_rate: number;
-    constructor(currency_rate, currency_change) {
-        this.currency_change = currency_change
-        this.currency_rate = currency_rate
+    public currency_change: string
+    public currency_rate: number
+    constructor() {
+        this.currency_change = ''
+        this.currency_rate = 1
     }
 
 
+    /**
+     * react render taoconvert pricebox
+     * @param item_price_element This is directly point to the originPrice or extraPrice element, so that we can find price straight
+     * @param taoconvert_pricebox_container_size pricebox container that render according to specific size
+     * @param insert_to_target_el The target element that we want to insertAdjacentHTML to
+     * @returns
+     */
+    createPriceBox(item_price_element: Element, taoconvert_pricebox_container_size: '' | 'lg' | 'sm', insert_to_target_el?: Element): void {
+        let target_el_to_insert = insert_to_target_el ? insert_to_target_el : item_price_element;
 
-    createPriceBox(item_price_element, taoconvert_pricebox_container_size) {
-        const item_price = findChildThenParentElbyClassName(item_price_element, 'Price--priceText').textContent
+        const item_price = findChildThenParentElbyClassName(item_price_element, 'Price--priceText')?.textContent
+        if (!item_price || item_price === '') return;
 
         let taoConvertContainer = document.createElement('div');
         taoConvertContainer.className = 'taoconvert_pricebox_container'
 
         // Insert the new div element after the item_price_element
-        item_price_element.insertAdjacentElement('afterend', taoConvertContainer);
+        target_el_to_insert.insertAdjacentElement('afterend', taoConvertContainer);
 
 
         if (item_price.includes("-")) {
@@ -35,8 +44,8 @@ export class priceBoxRenderer {
                 taoConvertContainer
             );
         } else {
-            const original_price = parseFloat(item_price/*.substring(1)*/);
-            const converted_price = (original_price * this.currency_rate).toFixed(2);
+            /*const original_price = parseFloat(item_price.substring(1));*/
+            const converted_price = (parseFloat(item_price) * this.currency_rate).toFixed(2);
 
             render(
                 <PriceBox convertedPrice={converted_price} currencyChange={this.currency_change} size={taoconvert_pricebox_container_size} />,

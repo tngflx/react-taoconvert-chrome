@@ -1,6 +1,6 @@
 import { render } from 'react-dom';
-import { MutationObserverManager, DOMTools } from '../utils/misc';
-import { ButtonComponent } from '../components/buyerTradeButton';
+import { DOMTools } from '../utils/misc';
+import BuyerTradeButtonWrapper from '../components/buyerTradeButton';
 const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = new DOMTools
 
 const port = chrome.runtime.connect({ name: 'content-script' });
@@ -9,13 +9,13 @@ const createBuyerTradeButton = (element, onClickHandler) => {
     const button_wrapper = document.createElement('div');
     button_wrapper.classList.add('tao_convert_button', 'float-left', 'inline-flex', 'mx-4');
 
-    render(<ButtonComponent onClick={() => onClickHandler(element)} />, button_wrapper);
+    render(<BuyerTradeButtonWrapper onClickHandler={() => onClickHandler(element)} />, button_wrapper);
     element.appendChild(button_wrapper);
 };
 
 const handleButtonClick = (element) => {
 
-
+    console.log('im clicked')
 
 
 }
@@ -30,14 +30,14 @@ port.onMessage.addListener(async (resp) => {
             const doc = parser.parseFromString(freight_html, 'text/html');
 
             // freight_tracking_el is el for search result tracking code on freight
-            let freight_tracking_el = doc.querySelector('.panel-default')?.nextElementSibling;
+            const freight_tracking_el = doc.querySelector('.panel-default')?.nextElementSibling;
             let freight_tracking_code: string;
             let freight_web_link: string;
 
-            let result: string | NodeListOf<Element> | (() => void) = freight_tracking_el?.tagName?.toLowerCase() === 'p'
+            const result: string | NodeListOf<Element> | (() => void) = freight_tracking_el?.tagName?.toLowerCase() === 'p'
                 ? freight_tracking_el.textContent : freight_tracking_el?.className == 'table-responsive'
                     ? (() => {
-                        let tbody_track_el = freight_tracking_el.querySelectorAll('tbody td')
+                        const tbody_track_el = freight_tracking_el.querySelectorAll('tbody td')
                         freight_tracking_code = tbody_track_el[1].querySelector('.text-nowrap')?.firstChild.textContent
                         freight_web_link = tbody_track_el[1].querySelector('a.agree')?.getAttribute('href')
                         return ''
@@ -61,16 +61,16 @@ port.onMessage.addListener(async (resp) => {
 
 (async () => {
     if (location.href.includes("https://buyertrade.taobao.com/")) {
-        let buyerTradeHeaderToObserve = 'tbody[class*="bought-wrapper-mod__head"]';
-        let buyerTradeDivToObserve = 'td[class*="bought-wrapper-mod__thead-operations-containe"]'
+        const buyerTradeHeaderToObserve = 'tbody[class*="bought-wrapper-mod__head"]';
+        const buyerTradeDivToObserve = 'td[class*="bought-wrapper-mod__thead-operations-containe"]'
 
         //let buyerTradeWrapper = new MutationObserverManager();
         //buyerTradeWrapper.config = { mode: 'addedNode', mutatedTargetChildNode: buyerTradeDivToObserve, mutatedTargetParentNode: buyerTradeHeaderToObserve, subtree: false };
         //buyerTradeWrapper.startObserver(injectBuyerTradePage);
 
-        let bought_wrapper_elements = Array.from(document.querySelectorAll(buyerTradeDivToObserve))
+        const bought_wrapper_elements = Array.from(document.querySelectorAll(buyerTradeDivToObserve))
 
-        for (let bought_wrapper_element of bought_wrapper_elements.slice(0, 15) as Element[]) {
+        for (const bought_wrapper_element of bought_wrapper_elements.slice(0, 15) as Element[]) {
             const bottom_row_buyertrade_wrapper_el = findChildThenParentElbyClassName(bought_wrapper_element, 'sol-mod__no-br', 'td');
 
             // buyer trade page column 1 2 3
@@ -101,7 +101,7 @@ port.onMessage.addListener(async (resp) => {
                     });
                 });
 
-                let db_data = {
+                const db_data = {
                     orderId,
                     product_main_title,
                     product_selected_title,

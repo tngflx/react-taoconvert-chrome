@@ -84,6 +84,9 @@
 }
 
 .taoconvert_pricebox_container span, .taoconvert_pricebox_container strong {
-    display: inline-block;
     vertical-align: middle;
+}
+
+.taoconvert_pricebox_container {
+    z-index: 1000
 }

@@ -27,18 +27,24 @@ const Footer = ({ clearListHandler, RestoreListHandler }) => {
     );
 };
 
-export const SavedLists = () => {
+export const ImportedProducts = () => {
+    const [loading, setLoading] = useState(true);
     const [products, setProducts] = useState([]);
 
     const fetchDB = () => {
+        setLoading(true); // Set loading to true before starting the fetch
         idb.retrieve()
             .then(data => {
                 data = data.sort((a, b) =>
                     new Date(b.product_create_time).getTime() - new Date(a.product_create_time).getTime()
                 );
-                setProducts(data)
+                setProducts(data);
             })
-    }
+            .finally(() => {
+                setLoading(false); // Set loading to false after fetch completion
+            });
+    };
+
     useEffect(() => {
         fetchDB()
     }, []);
@@ -91,7 +97,7 @@ export const SavedLists = () => {
                         if (tabId === newTab.id && changeInfo.status === "complete") {
                             // Remove the event listener once the URL is loaded
                             chrome.tabs.onUpdated.removeListener(onUpdatedListener);
-                            newOrUpdateTab({active: true }, newTab.id);
+                            newOrUpdateTab({ active: true }, newTab.id);
                         }
                     });
                 });
@@ -102,41 +108,47 @@ export const SavedLists = () => {
 
     return (
         <>
-            <div className="bg-white dark:bg-white-800 h-[calc(100vh-4.5em)] justify-center items-center mx-4">
-                <ul role="list" className="divide-y divide-white-100 pb-16">
-                    {products.map((product) => (
-                        <li key={product.product_create_time} className="flex justify-between gap-x-6 py-5">
-                            <div className="flex min-w-0 gap-x-4">
-                                <img className="h-12 w-12 flex-none bg-gray-500" src={product.product_image_url} alt="" />
-                                <div className="min-w-0 flex-auto">
-                                    <p className="text-sm font-semibold leading-6 text-white-900">{product.product_main_title}</p>
-                                    <p className="mt-1 text-xs leading-5 text-white-900">{product.product_selected_title}</p>
-                                    {!product.is_freight_processed && (
-                                        <span className="new-indicator bg-green-500 text-white p-1 rounded-full animate-pulse">New</span>
-                                    )}
+            {loading ? (
+                <div className="flex justify-center items-center h-screen">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-blue-500 border-r-2 border-b-2 border-gray-800"></div>
+                </div>
+            ) : (
+                <div className="bg-white dark:bg-white-800 h-[calc(100vh-4.5em)] justify-center items-center mx-4">
+                    <ul role="list" className="divide-y divide-white-100 pb-16">
+                        {products.map((product) => (
+                            <li key={product.product_create_time} className="flex justify-between gap-x-6 py-5">
+                                <div className="flex min-w-0 gap-x-4">
+                                    <img className="h-12 w-12 flex-none bg-gray-500" src={product.product_image_url} alt="" />
+                                    <div className="min-w-0 flex-auto">
+                                        <p className="text-sm font-semibold leading-6 text-white-900">{product.product_main_title}</p>
+                                        <p className="mt-1 text-xs leading-5 text-white-900">{product.product_selected_title}</p>
+                                        {!product.is_freight_processed && (
+                                            <span className="new-indicator bg-green-500 text-white p-1 rounded-full animate-pulse">New</span>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="shrink-0 sm:flex sm:flex-col sm:items-end">
-                                <p className="text-sm leading-6 text-gray-900">Buttons</p>
-                                <div className="mt-1 flex items-center gap-x-1.5">
-                                    <CircularButton
-                                        onClick={() => handleMinusClick(product.orderId)}
-                                        icon="-"
-                                        bgColor="blue"
-                                        hoverBgColor='red'
-                                    />
-                                    <CircularButton
-                                        onClick={() => handlePlusClick(product.orderId)}
-                                        icon="+"
-                                        bgColor="blue"
-                                        hoverBgColor="green"
-                                    />
+                                <div className="shrink-0 sm:flex sm:flex-col sm:items-end">
+                                    <p className="text-sm leading-6 text-gray-900">Buttons</p>
+                                    <div className="mt-1 flex items-center gap-x-1.5">
+                                        <CircularButton
+                                            onClick={() => handleMinusClick(product.orderId)}
+                                            icon="-"
+                                            bgColor="blue"
+                                            hoverBgColor='red'
+                                        />
+                                        <CircularButton
+                                            onClick={() => handlePlusClick(product.orderId)}
+                                            icon="+"
+                                            bgColor="blue"
+                                            hoverBgColor="green"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div >
+            )}
             <Footer clearListHandler={clearListHandler} RestoreListHandler="" />
         </>
     );

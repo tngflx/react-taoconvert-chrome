@@ -7,6 +7,7 @@ import customDynamicImport from './utils/plugins/custom-dynamic-import';
 import addHmr from './utils/plugins/add-hmr';
 import watchRebuild from './utils/plugins/watch-rebuild';
 import removeVitePreload from './utils/plugins/replace-code';
+import manifest from "./manifest";
 
 const rootDir = resolve(__dirname);
 const srcDir = resolve(rootDir, 'src');
@@ -20,7 +21,6 @@ const isProduction = !isDev;
 
 // ENABLE HMR IN BACKGROUND SCRIPT
 const enableHmrInBackgroundScript = true;
-const cacheInvalidationKeyRef = { current: generateKey() };
 
 export default defineConfig({
     resolve: {
@@ -32,16 +32,14 @@ export default defineConfig({
         },
     },
     plugins: [
-        makeManifest({
-            getCacheInvalidationKey,
-        }),
+        makeManifest(manifest, { isDev }),
         react(),
         customDynamicImport(),
         removeVitePreload({
             include: '**/index.js'
         }),
         addHmr({ background: enableHmrInBackgroundScript, view: true }),
-        isDev && watchRebuild({ afterWriteBundle: regenerateCacheInvalidationKey }),
+        isDev && watchRebuild({ afterWriteBundle: () => { } }),
     ],
     publicDir,
     build: {
@@ -53,12 +51,16 @@ export default defineConfig({
         reportCompressedSize: isProduction,
         emptyOutDir: !isDev,
         rollupOptions: {
+            watch: {
+                include: ["src/**", "vite.config.ts"],
+                exclude: ["node_modules/**", "src/**/*.spec.ts"],
+            },
             input: {
+                devtools: resolve(pagesDir, 'devtools', 'index.html'),
                 priceConvert: resolve(pagesDir, 'content', 'priceConvert', 'index.ts'),
                 priceConvStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
                 buyerTrade: resolve(pagesDir, 'content', 'buyerTradePage', 'index.ts'),
-                buyerTradeStyle: resolve(pagesDir, 'content', 'buyerTradePage', 'injected.css'),
-                freightPage: resolve(pagesDir, 'content', 'freightPage', 'nswex','index.ts'),
+                freightPage: resolve(pagesDir, 'content', 'freightPage', 'nswex', 'index.ts'),
                 background: resolve(pagesDir, 'background', 'index.ts'),
                 popup: resolve(pagesDir, 'popup', 'index.html')
             },
@@ -67,12 +69,11 @@ export default defineConfig({
                 chunkFileNames: isDev ? 'assets/js/[name].js' : 'assets/js/[name].[hash].js',
                 assetFileNames: assetInfo => {
                     const { name } = path.parse(assetInfo.name);
-                    const assetFileName = name === 'priceConvStyle' ? `${name}${getCacheInvalidationKey()}` : name;
-                    return `assets/[ext]/${assetFileName}.chunk.[ext]`;
+          return `assets/[ext]/${name}.chunk.[ext]`;
                 },
             },
         },
-        
+
     },
     test: {
         globals: true,
@@ -81,15 +82,3 @@ export default defineConfig({
         setupFiles: './test-utils/vitest.setup.js',
     },
 });
-
-function getCacheInvalidationKey() {
-    return cacheInvalidationKeyRef.current;
-}
-function regenerateCacheInvalidationKey() {
-    cacheInvalidationKeyRef.current = generateKey();
-    return cacheInvalidationKeyRef;
-}
-
-function generateKey(): string {
-    return `${Date.now().toFixed()}`;
-}

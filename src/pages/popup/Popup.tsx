@@ -1,9 +1,13 @@
 import { MemoryRouter, Routes, Route, useLocation, Link } from "react-router-dom";
 import { navLinks } from "./component/navLinks";
 import { Home } from "./tabs/Home";
-import { SavedLists } from "./tabs/SavedLists";
 import withSuspense from '@src/shared/hoc/withSuspense';
 import withErrorBoundary from '@src/shared/hoc/withErrorBoundary';
+
+import { Outlet } from "react-router-dom";
+import { AutoUploadTopup } from "./tabs/AutoUploadTopup";
+import { ListsDownload } from "./tabs/ListsDownload";
+import { ImportedProducts } from "./tabs/ImportedProducts";
 
 const CompanyLogo = () => {
     return (
@@ -17,18 +21,16 @@ const CompanyLogo = () => {
 
 const MenuLinks = ({ menuLinks }) => {
     return (
-        <Link to='/savedlisting'>
-            <ul className="flex px-1 lg:px-4">
-                {menuLinks.map((link) => (
-                    <div className="relative group" key={link.name}>
-                        <li className="p-2 font-semibold rounded-lg cursor-pointer lg:px-4 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800">
-                            {link.name}
-                        </li>
-                    </div>
-                ))}
-            </ul>
-        </Link>
-    );
+        <ul className="flex px-1 lg:px-4">
+            {menuLinks.map((link) => (
+                <div className="relative group" key={link.name}>
+                    <li className={`p-2 font-semibold rounded-lg cursor-pointer lg:px-4 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 ${location.pathname === link.route ? 'active' : ''}`}>
+                        <Link to={link.route}>{link.name}</Link>
+                    </li>
+                </div>
+            ))}
+        </ul>
+    )
 };
 
 const Navbar = () => {
@@ -51,7 +53,6 @@ const Navbar = () => {
     );
 };
 
-import { Outlet } from "react-router-dom";
 
 const Container = () => {
     return (
@@ -68,8 +69,9 @@ const Popup = () => {
             <Routes>
                 <Route path="/" element={<Container />}>
                     <Route index element={<Home />} />
-                    <Route path="savedlisting" element={<SavedLists />} />
-                    <Route path="autoUploadTopup" element={<autoUploadTopup />} />
+                    <Route path="/importedProducts" element={<ImportedProducts />} />
+                    <Route path="/autoUploadTopup" element={<AutoUploadTopup />} />
+                    <Route path="/listsDownload" element={<ListsDownload />} />
                 </Route>
             </Routes>
         </MemoryRouter>
