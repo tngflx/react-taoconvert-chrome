@@ -28,8 +28,7 @@ const manifest: chrome.runtime.ManifestV3 = {
     content_scripts: [
         {
             matches: ["https://buyertrade.taobao.com/*"],
-            js: ['src/pages/buyerTrade/index.js'],
-            css:['assets/css/buyerTradeStyle.chunk.css']
+            js: ['src/pages/buyerTrade/index.js']
         },
         {
             matches: ["https://s.taobao.com/*", "https://item.taobao.com/*", "https://world.taobao.com/*", "https://*.tmall.com/*"],

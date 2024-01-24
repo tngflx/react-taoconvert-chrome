@@ -1,36 +1,32 @@
 import React, { useRef, useEffect } from 'react';
-import { render } from 'react-dom';
+import tailwindCSS from '@src/assets/style/tailwind.css?inline';
+import { unmountComponentAtNode, render } from 'react-dom';
 
 const BuyerTradeButtonWrapper = ({ onClickHandler }) => {
     const buttonRef = useRef(null);
 
     useEffect(() => {
-        const loadExternalStylesheet = async () => {
-            // Access the Shadow DOM
-            const buttonWrapper = buttonRef.current.attachShadow({ mode: 'open' });
+        // Access the Shadow DOM
+        const shadowRoot = buttonRef.current.attachShadow({ mode: 'open' });
 
-            // Create a link element for the external stylesheet
-            const link = document.createElement('link');
-            link.setAttribute('rel', 'stylesheet');
-            link.setAttribute('type', 'text/css');
-            link.setAttribute('href', '@pages/content/buyerTradePage/injected.css'); // Use the default export from the dynamically imported module
-            buttonWrapper.appendChild(link);
-            // Access the Shadow DOM
+        // Create a style element for the external stylesheet
+        const cssStyle = document.createElement('style');
+        cssStyle.innerHTML = tailwindCSS;
+        shadowRoot.appendChild(cssStyle);
 
-            // Render Tailwind CSS Button into the Shadow DOM
-            const buttonContainer = document.createElement('div');
-            buttonWrapper.appendChild(buttonContainer);
+        // Render the component using render from react-dom
+        const buttonComponent = (
+            <div className="bg-blue-500 text-white py-2 px-4 rounded" onClick={onClickHandler}>
+                Click me
+            </div>
+        );
 
-            // Add Tailwind CSS classes to the buttonContainer
-            buttonContainer.className = 'bg-blue-500 text-white py-2 px-4 rounded';
+        render(buttonComponent, shadowRoot);
 
-            // Set up event handler
-            buttonContainer.addEventListener('click', onClickHandler);
-
-            // Add text content
-            buttonContainer.innerText = 'Click me';
-        }
-        loadExternalStylesheet()
+        // Cleanup function to unmount the component when the component is unmounted
+        return () => {
+            unmountComponentAtNode(shadowRoot);
+        };
     }, [onClickHandler]);
 
     return <div ref={buttonRef}></div>;
