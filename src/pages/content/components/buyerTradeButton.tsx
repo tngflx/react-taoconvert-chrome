@@ -1,34 +1,42 @@
 import React, { useRef, useEffect } from 'react';
-import tailwindCSS from '@src/assets/style/tailwind.css?inline';
-import { unmountComponentAtNode, render } from 'react-dom';
+import { render } from 'react-dom';
 
-const BuyerTradeButtonWrapper = ({ onClickHandler }) => {
+const BuyerTradeButtonWrapper = ({ onClickHandler, containerElement }) => {
     const buttonRef = useRef(null);
 
     useEffect(() => {
-        // Access the Shadow DOM
-        const shadowRoot = buttonRef.current.attachShadow({ mode: 'open' });
+        const shadowRoot = containerElement.attachShadow({ mode: 'open' });
 
-        // Create a style element for the external stylesheet
-        const cssStyle = document.createElement('style');
-        cssStyle.innerHTML = tailwindCSS;
-        shadowRoot.appendChild(cssStyle);
-
-        // Render the component using render from react-dom
-        const buttonComponent = (
-            <div className="bg-blue-500 text-white py-2 px-4 rounded" onClick={onClickHandler}>
-                Click me
-            </div>
+        // Can't directly return buttonElement because we still need to do dom manipulation on this button
+        // The only way is to useEffect hook to do dom manipulation before render
+        render(
+            <div className="float-left inline-flex mx-4">
+                <button
+                    onClick={() => onClickHandler()}
+                    className="taoconv_button bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
+                    ref={buttonRef}
+                >
+                    TaoImport
+                </button>
+            </div>,
+            shadowRoot
         );
 
-        render(buttonComponent, shadowRoot);
 
-        // Cleanup function to unmount the component when the component is unmounted
+        // Inject the external stylesheet
+        const linkElement = document.createElement('link');
+        linkElement.rel = 'stylesheet';
+        linkElement.href = chrome.runtime.getURL('assets/css/tailwindStyle.chunk.css');
+        shadowRoot.appendChild(linkElement);
+
+        // Cleanup logic (optional): Remove the stylesheet and reset buttonRef on component unmount
         return () => {
-            unmountComponentAtNode(shadowRoot);
+            shadowRoot.removeChild(linkElement);
         };
-    }, [onClickHandler]);
 
+    }, [onClickHandler, containerElement]);
+
+    // Return an empty div as a placeholder for the component
     return <div ref={buttonRef}></div>;
 };
 

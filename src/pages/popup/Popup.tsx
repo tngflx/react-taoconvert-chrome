@@ -5,7 +5,7 @@ import withSuspense from '@src/shared/hoc/withSuspense';
 import withErrorBoundary from '@src/shared/hoc/withErrorBoundary';
 
 import { Outlet } from "react-router-dom";
-import { AutoUploadTopup } from "./tabs/AutoUploadTopup";
+import { AutoUploadTopup } from "./tabs/autoUploadTopup";
 import { ListsDownload } from "./tabs/ListsDownload";
 import { ImportedProducts } from "./tabs/ImportedProducts";
 

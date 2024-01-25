@@ -60,6 +60,7 @@ export default defineConfig({
                 priceConvert: resolve(pagesDir, 'content', 'priceConvert', 'index.ts'),
                 priceConvStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
                 buyerTrade: resolve(pagesDir, 'content', 'buyerTradePage', 'index.ts'),
+                tailwindStyle: resolve(srcDir, 'assets', 'style', 'tailwind.css'),
                 freightPage: resolve(pagesDir, 'content', 'freightPage', 'nswex', 'index.ts'),
                 background: resolve(pagesDir, 'background', 'index.ts'),
                 popup: resolve(pagesDir, 'popup', 'index.html')
