@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { render } from 'react-dom';
 
-const BuyerTradeButtonWrapper = ({ onClickHandler, containerElement }) => {
+const ButtonRenderer = ({ onClickHandler, containerElement, buttonWrapperClasses, buttonName }) => {
     const buttonRef = useRef(null);
 
     useEffect(() => {
@@ -10,13 +10,13 @@ const BuyerTradeButtonWrapper = ({ onClickHandler, containerElement }) => {
         // Can't directly return buttonElement because we still need to do dom manipulation on this button
         // The only way is to useEffect hook to do dom manipulation before render
         render(
-            <div className="float-left inline-flex mx-4">
+            <div className={buttonWrapperClasses}>
                 <button
                     onClick={() => onClickHandler()}
                     className="taoconv_button bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
                     ref={buttonRef}
                 >
-                    TaoImport
+                    {buttonName}
                 </button>
             </div>,
             shadowRoot
@@ -40,4 +40,4 @@ const BuyerTradeButtonWrapper = ({ onClickHandler, containerElement }) => {
     return <div ref={buttonRef}></div>;
 };
 
-export default BuyerTradeButtonWrapper;
+export default ButtonRenderer;

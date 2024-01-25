@@ -1,3 +1,5 @@
+@import '@src/assets/style/tailwind.css';
+
 body {
     width: 600px;
     height: 500px;

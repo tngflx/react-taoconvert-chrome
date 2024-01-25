@@ -1,6 +1,6 @@
 import { render } from "react-dom";
-import { DOMTools } from "./misc";
-import { PriceBox } from "../priceConvert/priceBoxComponent";
+import { DOMTools } from "../../utils/misc";
+import { PriceBox } from "../priceBoxComponent";
 
 const { findChildThenParentElbyClassName } = new DOMTools;
 export class priceBoxRenderer {

@@ -1,6 +1,8 @@
 import reloadOnUpdate from 'virtual:reload-on-update-in-background-script';
 import 'webextension-polyfill';
 import { idb } from '../../shared/storages/indexDB';
+import { signH5 } from '../../shared/h5api.taobao/sign';
+
 
 reloadOnUpdate('pages/background');
 
@@ -48,65 +50,77 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             });
             break;
         case 'get_itempage_products':
-            const params = {
-                jsv: '2.6.1',
-                appKey: 12574478,
-                t: 1705902514018,
-                sign: 'ba4d7b884aa44ed322dcea5681485333',
-                api: 'mtop.taobao.pcdetail.data.get',
-                v: '1.0',
-                isSec: 0,
-                ecode: 0,
-                timeout: 10000,
-                ttid: '2022@taobao_litepc_9.17.0',
-                AntiFlood: true,
-                AntiCreep: true,
-                dataType: 'json',
-                valueType: 'string',
-                preventFallback: true,
-                type: 'json',
-                data: {
-                    id: '712767031587',
-                    detail_v: '3.3.2',
-                    exParams: '{"_u":"m20bhahd1d9818","id":"712767031587","spm":"a1z09.2.0.0.753f2e8dRe00I1","queryParams":"_u=m20bhahd1d9818&id=712767031587&spm=a1z09.2.0.0.753f2e8dRe00I1","domain":"https://item.taobao.com","path_name":"/item.htm"}'
-                }
-            };
-
-            const queryString = Object.entries(params)
-                .map(([key, value]) => {
-                    if (key === 'data') {
-                        // If the key is 'data', stringify the value
-                        value = JSON.stringify(value);
-                    }
-                    return `${key}=${encodeURIComponent(value as any)}`;
-                })
-                .join("&");
-
-            const url = `https://h5api.m.taobao.com/h5/mtop.taobao.pcdetail.data.get/1.0/?${queryString}`;
+            //e.__processRequestMethod, e.__processRequestType, e.__processToken, e.__processRequestUrl, e.middlewares, e.__processRequest, c]
 
             chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
-                // Extract the necessary cookies from the cookies array
-                const cookieString = cookies
+                const h5_tk_token_array = cookies
                     .filter(cookie => cookie.name.includes('m_h5_tk'))
+
+                const token = h5_tk_token_array[0].value.split('_')[0]
+
+                const h5_tk_cookies_string = h5_tk_token_array
                     .map(cookie => `${cookie.name}=${cookie.value}`)
                     .join('; ');
 
+                const time = (new Date).getTime()
+                const params = {
+                    jsv: '2.6.1',
+                    appKey: '12574478',
+                    t: time,
+                    api: 'mtop.taobao.pcdetail.data.get',
+                    v: '1.0',
+                    isSec: '0',
+                    ecode: '0',
+                    timeout: '10000',
+                    ttid: '2022@taobao_litepc_9.17.0',
+                    AntiFlood: 'true',
+                    AntiCreep: 'true',
+                    dataType: 'json',
+                    valueType: 'string',
+                    preventFallback: 'true',
+                    type: 'json',
+                    data: JSON.stringify({ ...request.data }),
+                };
+
+                params['sign'] = signH5(token, time, params.data)
+
+                const order = ['jsv', 'appKey', 't', 'sign', 'api', 'v', 'isSec', 'ecode', 'timeout', 'ttid', 'AntiFlood', 'AntiCreep', 'dataType', 'valueType', 'preventFallback', 'type', 'data'];
+                const reorderedParams = Object.fromEntries(order.map(key => [key, params[key]]));
+
+                const queryString = Object.entries(reorderedParams)
+                    .map(([key, value]) => {
+                        return `${key}=${encodeURIComponent(value as any)}`;
+                    })
+                    .join("&");
+
+                const url = `https://h5api.m.taobao.com/h5/mtop.taobao.pcdetail.data.get/1.0/?${queryString}`;
+                // Extract the necessary cookies from the cookies array
+
+
                 fetch(url, {
-                    "headers": {
-                        "accept": "application/json",
-                        "cache-control": "no-cache",
-                        "content-type": "application/x-www-form-urlencoded",
-                        "pragma": "no-cache",
-                        "Cookie": cookieString
+                    headers: {
+                        "accept-language": "en;q=0.5",
+                        "sec-ch-ua-platform": "\"Windows\"",
+                        "sec-fetch-dest": "empty",
+                        "sec-fetch-mode": "cors",
+                        "sec-fetch-site": "same-site",
+                        "sec-gpc": "1",
+                        "Cookie": h5_tk_cookies_string,
+                        "Content-Type": "application/json",  // Add this line
                     },
-                    "method": "GET",
-                    "mode": "cors",
-                    "credentials": "include"
+                    referrer: "https://item.taobao.com/",
+                    referrerPolicy: "strict-origin-when-cross-origin",
+                    method: "GET",
+                    mode: "cors",
+                    credentials: "include"
                 })
                     .then(response => response.json())
                     .then(data => {
-                        console.log(data);
-                    });
+                        sendResponse(data)
+                    })
+                    .catch(err => {
+                        console.error('h5api.taobao is not working well :(')
+                    })
             });
 
             break;

@@ -1,10 +1,10 @@
 import { render } from "react-dom";
-import { PriceBox } from "./priceBoxComponent";
 import { CurrencyAPI } from "../utils/currencyAPI";
 import { MutationObserverManager, DOMTools } from '../utils/misc';
-import { priceBoxRenderer } from "../utils/priceBoxRenderer";
-import { ItemPageButton } from "../components/itemPageButton";
 import { taoDownloader } from "../taoDownloader/taoDownloadInjected";
+import { priceBoxRenderer } from "../components/renderer/priceBoxRenderer";
+import { PriceBox } from "../components/priceBoxComponent";
+import ButtonRenderer from "../components/renderer/taoButtonRenderer";
 const { findChildThenParentElbyClassName } = new DOMTools;
 
 // Create an instance of the CurrencyAPI class
@@ -263,7 +263,13 @@ if (location.href.includes("https://item.taobao.com/")) {
             const new_button_wrapper = document.createElement('div');
             new_button_wrapper.className = 'tao_convert_download_button';
 
-            render(<ItemPageButton onClick={taoDownloader} />, new_button_wrapper);
+            render(
+                <ButtonRenderer buttonWrapperClasses="inline-flex float-end"
+                    containerElement={new_button_wrapper}
+                    onClickHandler={taoDownloader}
+                    buttonName='taoDownloader'
+                />
+                , new_button_wrapper);
             item_header_el.appendChild(new_button_wrapper);
             ran_before = true;
         }

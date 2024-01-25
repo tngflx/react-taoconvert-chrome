@@ -6,8 +6,8 @@ import withErrorBoundary from '@src/shared/hoc/withErrorBoundary';
 
 import { Outlet } from "react-router-dom";
 import { AutoUploadTopup } from "./tabs/autoUploadTopup";
-import { ListsDownload } from "./tabs/ListsDownload";
-import { ImportedProducts } from "./tabs/ImportedProducts";
+import { ListsDownload } from "./tabs/listsDownload";
+import { ImportedProducts } from "./tabs/importedProducts";
 
 const CompanyLogo = () => {
     return (

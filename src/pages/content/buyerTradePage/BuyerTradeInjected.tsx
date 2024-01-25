@@ -1,11 +1,11 @@
 import { render } from 'react-dom';
 import { DOMTools } from '../utils/misc';
-import BuyerTradeButtonWrapper from '../components/buyerTradeButton';
+import ButtonRenderer from '../components/renderer/taoButtonRenderer';
 const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = new DOMTools
 
 const port = chrome.runtime.connect({ name: 'content-script' });
 
-const createBuyerTradeButton = (bought_threadop_wrapper_el: HTMLElement, onClickHandler) => {
+const createBuyerTradeButton = (bought_threadop_wrapper_el, onClickHandler) => {
     const button_container = document.createElement('div');
     button_container.classList.add('tao_convert_button');
 
@@ -13,20 +13,19 @@ const createBuyerTradeButton = (bought_threadop_wrapper_el: HTMLElement, onClick
 
     // Render the BuyerTradeButtonWrapper component and pass the button_wrapper as a prop
     render(
-        <BuyerTradeButtonWrapper
+        <ButtonRenderer
             onClickHandler={onClickHandler}
             containerElement={button_container}
+            buttonWrapperClasses="float-left inline-flex mx-4"
+            buttonName="taoImport"
         />,
         button_container
     );
-
-
 };
 
 const handleButtonClick = (element) => {
 
     console.log('im clicked')
-
 
 }
 
@@ -80,7 +79,7 @@ port.onMessage.addListener(async (resp) => {
 
         const bought_threadop_wrapper_els = Array.from(document.querySelectorAll(buyerTradeDivToObserve))
 
-        for (const bought_threadop_wrapper_el of bought_threadop_wrapper_els.slice(0, 15) as Node[]) {
+        for (const bought_threadop_wrapper_el of bought_threadop_wrapper_els.slice(0, 15) as Element[]) {
             const bottom_row_buyertrade_wrapper_el = findChildThenParentElbyClassName(bought_threadop_wrapper_el, 'sol-mod__no-br', 'td');
 
             // buyer trade page column 1 2 3
@@ -103,7 +102,7 @@ port.onMessage.addListener(async (resp) => {
             const product_create_time = upper_row_buyertrade_wrapper_el.querySelector("span[class^='bought-wrapper-mod__create-time']")?.textContent
 
             if (is_tracking_el_exists) {
-                createBuyerTradeButton(bought_threadop_wrapper_el, handleButtonClick)
+                createBuyerTradeButton(bought_threadop_wrapper_el as HTMLElement, handleButtonClick)
 
                 const tracking_info = await new Promise<TrackingInfo>((resolve) => {
                     chrome.runtime.sendMessage({ action: "get_tracking_code", orderId }, (tracking_info) => {
