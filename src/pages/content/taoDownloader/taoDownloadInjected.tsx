@@ -19,7 +19,7 @@ export async function taoDownloader() {
         });
 
         // Construct JSON object
-        let data = {
+        let url_param_data = {
             "id": urlParams.get("id"),
             "detail_v": "3.3.2",
             "exParams": JSON.stringify({
@@ -30,7 +30,7 @@ export async function taoDownloader() {
             })
         };
 
-        chrome.runtime.sendMessage({ action: 'get_itempage_products', data }, h5api_data => {
+        chrome.runtime.sendMessage({ action: 'get_itempage_products', url_param_data }, h5api_data => {
             resolve(h5api_data)
         })
 
@@ -40,7 +40,7 @@ export async function taoDownloader() {
     const remapped_skubase = skuBase.skus.map(({ propPath, skuId }) => {
         const prop_path_segments = propPath.split(";");
 
-        const product_title_segment = prop_path_segments.map((segment) => {
+        const all_product_props = prop_path_segments.map((segment) => {
             // Split each segment by ":"
             const [pid, vid] = segment.split(":").map((item) => item.trim());
 
@@ -53,13 +53,13 @@ export async function taoDownloader() {
             if (prop) {
                 const value = prop.values.find((v) => v.vid === vid);
                 if (value) {
-                    const preprocess_res = {
+                    const preprocess_sku = {
                         name_segment: value.name,
                         price_text: price?.priceText,
                         quantity
                     }
 
-                    return value?.image ? { image: value.image, ...preprocess_res } : preprocess_res
+                    return value?.image ? { image: value.image, ...preprocess_sku } : preprocess_sku
 
                 }
             }
@@ -68,16 +68,22 @@ export async function taoDownloader() {
             if (image)
                 acc.product_image_link = image
             acc.product_price = price_text
-            acc.product_avail_quantity= quantity
+            acc.product_avail_quantity = quantity
             return acc
         }, { product_name: [], product_image_link: '', product_price: '', product_avail_quantity: '' })
 
-        return { ...product_title_segment, skuId }
+        return { ...all_product_props, skuId }
     })
-    console.log(remapped_skubase)
+
+
+
     all_sku_items.forEach(sku_item => {
         const product_title = sku_item.querySelector("div[title]")?.textContent
-        const product_image = sku_item.querySelector('img[class="skuIcon"]').getAttribute("src")
+        const product_image = sku_item.querySelector('img[class="skuIcon"]')?.getAttribute("src")
 
     })
+
+    const review_tab_container = document.querySelector('div[class^="Tabs--container"]')
+    const review_with_only_picorvid = review_tab_container.querySelectorAll('div[class^="Comments--tagList"]')[1]
+
 }

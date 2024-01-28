@@ -305,16 +305,15 @@ if (urlPattern.test(location.href)) {
         if (tmall_extra_price_el) {
             boxRenderer.removeTrailingTaoConvPricebox()
             let tmall_price = tmall_extra_price_el.textContent
-            const converted_price = (parseFloat(tmall_price) * currency_rate).toFixed(2);
 
             // Get the main wrapper for discount price element so that we can style it
             let salePriceRelativeWrapElement = tmall_extra_price_el.closest('[class^="Price--sale--"]')
-            salePriceRelativeWrapElement = salePriceRelativeWrapElement ? salePriceRelativeWrapElement : tmall_extra_price_el.closest('[class^="Price--priceWrap"]');
+            salePriceRelativeWrapElement = salePriceRelativeWrapElement ? salePriceRelativeWrapElement : tmall_extra_price_el.closest('[class^="Price--root"]');
 
             if (salePriceRelativeWrapElement) {
                 boxRenderer.createPriceBox(tmall_extra_price_el, 'lg', salePriceRelativeWrapElement)
             } else throw Error('no price wrapper element found')
-            salePriceRelativeWrapElement.style["margin-bottom"] = '10px'
+            salePriceRelativeWrapElement.style["margin-bottom"] = '5px'
 
         } else if (tmall_origin_price_el) {
             boxRenderer.removeTrailingTaoConvPricebox()
@@ -329,7 +328,7 @@ if (urlPattern.test(location.href)) {
             tmall_origin_price_el.style["margin-right"] = '10px'
 
             let priceSaleParentElement = tmall_origin_price_el.closest('[class^="Price--sale--"]')
-            let normalPriceWrapParentElement = tmall_origin_price_el.closest('[class^="Price--priceWrap--"]')
+            let normalPriceWrapParentElement = tmall_origin_price_el.closest('[class^="Price--root"]')
 
             let selectedWrapperElement = priceSaleParentElement ? priceSaleParentElement : normalPriceWrapParentElement
 

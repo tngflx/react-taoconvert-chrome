@@ -14,3 +14,9 @@ interface SkuInfo {
 interface Sku2Info {
     [key: string]: SkuInfo;
 }
+
+interface UrlParamData {
+    id?: string;
+    detail_v: string;
+    exParams: string; // Assuming exParams is a JSON string
+}

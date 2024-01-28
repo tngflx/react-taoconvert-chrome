@@ -1,7 +1,7 @@
 import reloadOnUpdate from 'virtual:reload-on-update-in-background-script';
 import 'webextension-polyfill';
 import { idb } from '../../shared/storages/indexDB';
-import { signH5 } from '../../shared/h5api.taobao/sign';
+import { h5Encryption } from '../../shared/h5api.taobao/sign';
 
 
 reloadOnUpdate('pages/background');
@@ -82,7 +82,8 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     data: JSON.stringify({ ...request.data }),
                 };
 
-                params['sign'] = signH5(token, time, params.data)
+                const { signH5ItemPageReq } = new h5Encryption(token, time, params.data)
+                params['sign'] = signH5ItemPageReq()
 
                 const order = ['jsv', 'appKey', 't', 'sign', 'api', 'v', 'isSec', 'ecode', 'timeout', 'ttid', 'AntiFlood', 'AntiCreep', 'dataType', 'valueType', 'preventFallback', 'type', 'data'];
                 const reorderedParams = Object.fromEntries(order.map(key => [key, params[key]]));
@@ -94,8 +95,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     .join("&");
 
                 const url = `https://h5api.m.taobao.com/h5/mtop.taobao.pcdetail.data.get/1.0/?${queryString}`;
-                // Extract the necessary cookies from the cookies array
-
 
                 fetch(url, {
                     headers: {
@@ -124,6 +123,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             });
 
             break;
+
+        case 'get_itempage_reviews':
+
+
+            break;
+
         default:
     }
     // Bug in chrome api itself, need to return true, so it will wait for response
