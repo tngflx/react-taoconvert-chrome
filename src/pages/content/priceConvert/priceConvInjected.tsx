@@ -225,36 +225,41 @@ if (location.href.includes("https://s.taobao.com/")) {
 //Affected only in taobao item page
 if (location.href.includes("https://item.taobao.com/")) {
 
-    const itemPageDivToObserve = 'div[class^="Item--content"] [class^="BasicContent--itemInfo"]';
+    let itemPageDivToObserve = 'div[class^="Item--content"] [class^="BasicContent--itemInfo"]';
     mutObserverManager.config = { mode: 'addedText', mutTargetChildName: "Price--priceText", domLoadedSourceParentNode: itemPageDivToObserve, subtree: true }
     let ran_before = false;
 
-    mutObserverManager.startObserver(() => {
-        boxRenderer.removeTrailingTaoConvPricebox()
-
-        let itempage_price_elements = document.querySelectorAll("[class^='Price--priceText']")
-        let itempage_extra_price_el;
-        let itempage_origin_price_el;
-
-        Array.from(itempage_price_elements).forEach(el => {
-            itempage_extra_price_el = findChildThenParentElbyClassName(el, "extraPrice");
-            itempage_origin_price_el = findChildThenParentElbyClassName(el, "originPrice");
-        });
-
-        if (itempage_extra_price_el) {
+    try {
+        mutObserverManager.startObserver(() => {
             boxRenderer.removeTrailingTaoConvPricebox()
 
-            let price_wrapper_el = itempage_extra_price_el.closest('[class^="Price--root"]');
-            boxRenderer.createPriceBox(price_wrapper_el, "")
-        } else if (itempage_origin_price_el) {
-            boxRenderer.removeTrailingTaoConvPricebox()
+            let itempage_price_elements = document.querySelectorAll("[class^='Price--priceText']")
+            let itempage_extra_price_el;
+            let itempage_origin_price_el;
 
-            let price_wrapper_el = itempage_origin_price_el.closest('[class^="Price--root"]');
-            boxRenderer.createPriceBox(price_wrapper_el, "")
-        }
+            Array.from(itempage_price_elements).forEach(el => {
+                itempage_extra_price_el = findChildThenParentElbyClassName(el, "extraPrice");
+                itempage_origin_price_el = findChildThenParentElbyClassName(el, "originPrice");
+            });
 
-        createDownloadListsButton()
-    })
+            if (itempage_extra_price_el) {
+                boxRenderer.removeTrailingTaoConvPricebox()
+
+                let price_wrapper_el = itempage_extra_price_el.closest('[class^="Price--root"]');
+                boxRenderer.createPriceBox(price_wrapper_el, "")
+            } else if (itempage_origin_price_el) {
+                boxRenderer.removeTrailingTaoConvPricebox()
+
+                let price_wrapper_el = itempage_origin_price_el.closest('[class^="Price--root"]');
+                boxRenderer.createPriceBox(price_wrapper_el, "")
+            }
+
+            createDownloadListsButton()
+        })
+
+    } catch (e) {
+        console.log(e)
+    }
 
     function createDownloadListsButton() {
         if (ran_before === false) {

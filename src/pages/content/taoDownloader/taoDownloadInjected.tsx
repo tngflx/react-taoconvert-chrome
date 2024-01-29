@@ -84,6 +84,7 @@ export async function taoDownloader() {
     })
 
     const review_tab_container = document.querySelector('div[class^="Tabs--container"]')
-    const review_with_only_picorvid = review_tab_container.querySelectorAll('div[class^="Comments--tagList"]')[1]
+    const review_with_pic_orvid = review_tab_container.querySelectorAll('div[class^="Comments--tagList"]')[1]
+
 
 }

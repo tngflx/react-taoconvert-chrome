@@ -1,3 +1,5 @@
+import { mutObsError } from "./errorHandler";
+
 export class DOMTools {
 
     /**
@@ -143,7 +145,7 @@ export class MutationObserverManager extends DOMTools {
             this.subtree = subtree
         } else {
             // Not to throw error here as mutationObserver can still observe unloaded elements
-            throw Error(this.errorCodes['elementNotFound'] + '' + domLoadedSourceParentNode);
+            throw new mutObsError('elementNotFound', this.errorCodes['elementNotFound'] + ' ' + domLoadedSourceParentNode);
         }
 
         console.log(`mutate.startObserver func/ parent: ${domLoadedSourceParentNode}, mode: ${mode}, mutatedChild: ${mutTargetChildName}`)
