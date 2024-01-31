@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { Item, idb } from "../../../shared/storages/indexDB";
+import { idb } from "../../../shared/storages/indexDB";
 
 let CircularButton = ({ onClick, icon, bgColor, hoverBgColor }) => {
     const colors = {
@@ -120,7 +120,10 @@ export const ImportedProducts = () => {
                             product_web_link,
                             product_image_url,
                             product_create_time,
-                            tracking_info,
+                            tracking_info: {
+                                expressId,
+                                expressName
+                            },
                             freight_delivery_data: {
                                 tracking_code,
                                 delivery_status_tracklink,
@@ -149,6 +152,9 @@ export const ImportedProducts = () => {
                                     <div className="min-w-0 flex-auto">
                                         <p className="text-sm font-semibold leading-6 text-white-900">{product_main_title}</p>
                                         <p className="mb-2 text-xs leading-5 text-white-900">{selected_product_variant}</p>
+                                        {(expressId && (
+                                            <span className="bg-blue-400 text-white p-1.5 rounded-full text-center">{`${expressName}: ${expressId}`}</span>
+                                        ))}
                                     </div>
                                 </div>
 

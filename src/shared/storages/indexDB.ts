@@ -1,5 +1,5 @@
 export class DBAccess implements IDBAccess {
-    private dbAccess: DBAccess;
+    private static instance: DBAccess;
     private db: IDBDatabase;
 
     async connect(dbName: string, storeName: string) {
@@ -15,7 +15,7 @@ export class DBAccess implements IDBAccess {
             request.onerror = error => {
                 attempts--;
                 if (attempts) {
-                    return this.connect(dbName, storeName);
+                    return DBAccess.getInstance().connect(dbName, storeName);
                 }
                 return reject(error);
             }
@@ -34,8 +34,16 @@ export class DBAccess implements IDBAccess {
 
     }
 
+    static getInstance() {
+        if (!DBAccess.instance) {
+            DBAccess.instance = new DBAccess();
+        }
+        return DBAccess.instance;
+    }
+
+    // Multiple class can now access the current instance straight
     get instance() {
-        return this.dbAccess ? this.dbAccess : this.dbAccess = new DBAccess();
+        return DBAccess.getInstance();
     }
 }
 
@@ -83,7 +91,7 @@ class DataAccess<T extends BuyerTradeData> implements IDataAccess<T> {
                 }
             };
 
-            request.onerror = event => {
+            request.onerror = (event: Event & { target: IDBRequest }) => {
                 console.error('Error retrieving data:', event.target.error);
                 reject(event.target.error);
             };
@@ -134,4 +142,4 @@ class DataAccess<T extends BuyerTradeData> implements IDataAccess<T> {
     }
 }
 
-export const idb = new DataAccess<Item>('saved_list_db', 'saved_lists');
+export const idb = new DataAccess<BuyerTradeData>('saved_list_db', 'saved_lists');
