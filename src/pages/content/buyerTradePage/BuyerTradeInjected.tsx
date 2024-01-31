@@ -23,7 +23,7 @@ const createBuyerTradeButton = (bought_threadop_wrapper_el, onClickHandler) => {
     );
 };
 
-const handleButtonClick = (element) => {
+const handleButtonClick = () => {
 
     console.log('im clicked')
 
@@ -39,27 +39,47 @@ port.onMessage.addListener(async (resp) => {
             const doc = parser.parseFromString(freight_html, 'text/html');
 
             // freight_tracking_el is el for search result tracking code on freight
-            const freight_tracking_el = doc.querySelector('.panel-default')?.nextElementSibling;
-            let freight_tracking_code: string;
-            let freight_web_link: string;
+            const nswex_search_result_el = doc.querySelector('.panel-default')?.nextElementSibling;
+            let freight_delivery_status: string;
+            /**
+             * TODO : 
+             * 1) use freight_tracking_code to check when arrival
+             * 2) 
+             */
+            const text_search_result_el = nswex_search_result_el?.tagName?.toLowerCase() === 'p'
+                ? nswex_search_result_el.textContent : null
 
-            const result: string | NodeListOf<Element> | (() => void) = freight_tracking_el?.tagName?.toLowerCase() === 'p'
-                ? freight_tracking_el.textContent : freight_tracking_el?.className == 'table-responsive'
-                    ? (() => {
-                        const tbody_track_el = freight_tracking_el.querySelectorAll('tbody td')
-                        freight_tracking_code = tbody_track_el[1].querySelector('.text-nowrap')?.firstChild.textContent
-                        freight_web_link = tbody_track_el[1].querySelector('a.agree')?.getAttribute('href')
-                        return ''
-                    })() : "error"
+            const table_search_result_columns_els: Element[] = Array.from(nswex_search_result_el.querySelectorAll('table.table-bordered tbody td'))
 
-            if (result === "You have not made any previous orders!") {
-                resp.is_freight_processed = false;
-            } else if (freight_tracking_code?.startsWith('MY')) {
-                resp.is_freight_processed = true;
-                console.log(freight_tracking_code, freight_web_link)
+            if (table_search_result_columns_els.length > 0) {
+                const freightProps = {
+                    tracking_code: table_search_result_columns_els[1].querySelector('.text-nowrap')?.firstChild.textContent,
+                    delivery_status_tracklink: table_search_result_columns_els[1].querySelector('a.agree')?.getAttribute('href'),
+                    date_added: table_search_result_columns_els[3].textContent,
+                    total_weight: table_search_result_columns_els[6].textContent,
+                    total_price: table_search_result_columns_els[8].textContent,
+                    delivery_status: table_search_result_columns_els[7].querySelector('span.order_status')?.textContent ||
+                        table_search_result_columns_els[7].querySelector('span#order_product_status')?.textContent
+                };
+                freight_delivery_status = freightProps.delivery_status
+
+                resp.freight_delivery_data = Object.fromEntries(
+                    (Object.entries(freightProps) as [string, string][])
+                        // Trimming and replace newline
+                        .map(([key, value]) => [key, typeof (value) === 'string' ? value.trim().replace(/\n/g, '') : null])
+                        // Filter out undefined/null/empty value
+                        .filter(([, value]) => value && value !== '')
+                ) as { [key: string]: string };
+
             }
+
+            if (text_search_result_el === "You have not made any previous orders!") {
+                resp.freight_delivery_data = Object.assign({}, resp.freight_delivery_data, { delivery_status: "none" });
+            }
+
+            // postMessage persist message on each call, need manual cleaning
             delete resp.freight_html;
-            delete resp.msg_action;
+            delete resp.msg_action; // Fixes bug where previous msg_action obj stuck with a new chromeapi postmessage call
 
             port.postMessage({ msg_action: 'save_db', ...resp })
             break;
@@ -70,7 +90,6 @@ port.onMessage.addListener(async (resp) => {
 
 (async () => {
     if (location.href.includes("https://buyertrade.taobao.com/")) {
-        const buyerTradeHeaderToObserve = 'tbody[class*="bought-wrapper-mod__head"]';
         const buyerTradeDivToObserve = 'td[class*="bought-wrapper-mod__thead-operations-container"]'
 
         //let buyerTradeWrapper = new MutationObserverManager();
@@ -87,7 +106,7 @@ port.onMessage.addListener(async (resp) => {
             const is_tracking_el_exists = checkNodeExistsInChildEl(columns[5], 'viewLogistic')
 
             const product_main_title = columns[0].querySelectorAll("div[style^='margin-left'] a span")?.[2]?.textContent
-            const product_selected_title = columns[0].querySelectorAll("span[class^='production-mod__sku-item'] span")?.[2]?.textContent
+            const selected_product_variant = columns[0].querySelectorAll("span[class^='production-mod__sku-item'] span")?.[2]?.textContent
 
             const product_image_url = 'https:' + columns[0].querySelector("a[class^='production-mod__pic'] img")?.getAttribute('src')
 
@@ -99,7 +118,7 @@ port.onMessage.addListener(async (resp) => {
 
             const upper_row_buyertrade_wrapper_el = findChildThenParentElbyClassName(bought_threadop_wrapper_el, 'bought-wrapper-mod__head-info-cell')
             const orderId = upper_row_buyertrade_wrapper_el.querySelectorAll("span[data-reactid]")?.[5]?.textContent
-            const product_create_time = upper_row_buyertrade_wrapper_el.querySelector("span[class^='bought-wrapper-mod__create-time']")?.textContent
+            const product_create_date = upper_row_buyertrade_wrapper_el.querySelector("span[class^='bought-wrapper-mod__create-time']")?.textContent
 
             if (is_tracking_el_exists) {
                 createBuyerTradeButton(bought_threadop_wrapper_el as HTMLElement, handleButtonClick)
@@ -110,15 +129,15 @@ port.onMessage.addListener(async (resp) => {
                     });
                 });
 
-                const db_data = {
+                const db_data: BuyerTradeData = {
                     orderId,
                     product_main_title,
-                    product_selected_title,
+                    selected_product_variant,
                     bought_price,
                     bought_quantity,
                     product_web_link,
                     product_image_url,
-                    product_create_time,
+                    product_create_date,
                     tracking_info
                 }
 

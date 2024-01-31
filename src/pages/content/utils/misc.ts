@@ -1,20 +1,22 @@
-import { mutObsError } from "./errorHandler";
+import { MutObsError } from "./errorHandler";
 
 export class DOMTools {
 
     /**
-     * Find element / dom entities by class name or the tag
-     * @param {string} element The iteration object from querySelectorAll
+     * Find element / dom entities by class name with/without the tag
+     * Works by traversing into children first then traverse up to ancestor/parent while ignoring siblings
+     * Only go for first layer children and doesn't go too deep
+     * @param {string} src_elements The iteration object from querySelectorAll
      * @param {any} class_name class name u want to look for
      * @param {any} element_tag the tag u want to look for, example <div> <p>
-     * @returns
+     * @returns {Element} the node Element u searched for
      */
-    findChildThenParentElbyClassName(element: Element | null, class_name: string, element_tag?: string): Element | null {
+    findChildThenParentElbyClassName(src_elements: Element | null, class_name: string, element_tag?: string): Element | null {
         let lowerCaseClassName = class_name.toLowerCase();
         element_tag = element_tag || '*';
 
-        while (element && element.tagName !== 'HTML') {
-            const matchingElement = Array.from(element.getElementsByTagName(element_tag)).find(el => {
+        while (src_elements && src_elements.tagName !== 'HTML') {
+            const matchingElement = Array.from(src_elements.getElementsByTagName(element_tag)).find(el => {
                 return typeof el.className === 'string' && el.className.toLowerCase().includes(lowerCaseClassName);
             });
 
@@ -22,20 +24,20 @@ export class DOMTools {
                 return matchingElement;
             }
 
-            element = element.parentNode as Element;
+            src_elements = src_elements.parentNode as Element;
         }
 
         return null; // Return null if no matching element is found in the ancestors
     }
 
-    findMultipleParentElbyClassName(element: Element | null, class_name: string, element_tag?: string): Element[] {
+    findMultipleParentElbyClassName(src_element: Element | null, class_name: string, element_tag?: string): Element[] {
         let lowerCaseClassName = class_name.toLowerCase();
         element_tag = element_tag || '*';
 
         const matchingElements: Element[] = [];
 
-        while (element && element.tagName !== 'HTML') {
-            const elements = Array.from(element.getElementsByTagName(element_tag)).filter(el => {
+        while (src_element && src_element.tagName !== 'HTML') {
+            const elements = Array.from(src_element.getElementsByTagName(element_tag)).filter(el => {
                 return typeof el.className === 'string' && el.className.toLowerCase().includes(lowerCaseClassName);
             });
 
@@ -43,26 +45,33 @@ export class DOMTools {
                 matchingElements.push(...elements);
             }
 
-            element = element.parentNode as Element;
+            src_element = src_element.parentNode as Element;
         }
 
         return matchingElements;
     }
-
-    checkNodeExistsInChildEl = (element: Element, class_or_id: string, returnElement?: boolean): Element | boolean => {
-        if (element.className && typeof element.className === 'string' && element.className.includes(class_or_id)) {
-            return returnElement ? element : true;
+    /**
+     * check if parcticular html node exists in child element with return either boolean or the element itself
+     * this method is tailored for mutationLists iteration
+     * @param {Element} src_element source element/ parent node that contains the child to search for
+     * @param {string} class_or_id string of the classname or id name for search target
+     * @param {Boolean} is_return_element flag to return element or boolean
+     * @returns {Boolean | Element} return either boolean or Element
+     */
+    checkNodeExistsInChildEl = (src_element: Element, class_or_id: string, is_return_element?: boolean): Element | boolean => {
+        if (src_element.className && typeof src_element.className === 'string' && src_element.className.includes(class_or_id)) {
+            return is_return_element ? src_element : true;
         }
 
-        if (element.id && element.id === class_or_id) {
-            return returnElement ? element : true;
+        if (src_element.id && src_element.id === class_or_id) {
+            return is_return_element ? src_element : true;
         }
 
-        if (element.childNodes.length > 0) {
-            for (const child of Array.from(element.childNodes)) {
+        if (src_element.childNodes.length > 0) {
+            for (const child of Array.from(src_element.childNodes)) {
                 if (child.nodeType === 1) {
-                    const result = this.checkNodeExistsInChildEl(child as Element, class_or_id, returnElement);
-                    if (result === true || (returnElement && result)) {
+                    const result = this.checkNodeExistsInChildEl(child as Element, class_or_id, is_return_element);
+                    if (result === true || (is_return_element && result)) {
                         return result;
                     }
                 }
@@ -72,17 +81,28 @@ export class DOMTools {
         return false;
     }
 
-    checkTextInsertedInParentEl = (element: Element, class_or_id: string): boolean => {
-        if (element.nodeType == 3 && element.textContent !== '') {
-            if (element?.parentElement && element.parentElement.className.includes(class_or_id)) {
+    /**
+     * check if text already inserted on mutation by main DOM
+     * this method is tailored for mutationLists iteration
+     * @param {Element} src_element source element/ parent node that contains the child to search for
+     * @param {string} class_or_id string of the classname or id name for search target
+     * @param {Boolean} is_return_element flag to return true/ false
+     * @returns {Boolean}
+     */
+    checkTextInsertedInParentEl = (src_element: Element, class_or_id: string): boolean => {
+        //nodeType 3 is text, when textContent is not empty
+        // which means text exists, then return true
+        if (src_element.nodeType == 3 && src_element.textContent !== '') {
+            if (src_element?.parentElement && src_element.parentElement.className.includes(class_or_id)) {
                 return true
             }
         }
 
-        // Weird taobao rendering after click on different option of product (hence changing price)
+        // Weird taobao rendering after click on different option of product (while changing price)
         // which has multiple comments first before putting new text
-        if (element.nodeType == 8 && element.nodeName == '#comment') {
-            if (element?.previousElementSibling && element.previousElementSibling?.className?.includes(class_or_id)) {
+        // This is to capture the moment when comment is added, presume text is added on that time
+        if (src_element.nodeType == 8 && src_element.nodeName == '#comment') {
+            if (src_element?.previousElementSibling && src_element.previousElementSibling?.className?.includes(class_or_id)) {
                 return true
             }
         }
@@ -97,11 +117,11 @@ export class MutationObserverManager extends DOMTools {
 
     errorCodes: Record<string, string>;
     config: {
-        mode: string;
+        mode: 'addedNode' | 'removedNode' | 'addedText';
         /**
-         * The mutated target parent node of the MutationObserverManager.
+         * The mutated target child node of domLoadedSourceParentNode.
          * the selector doesn't need to be in [class^=''] format
-         * cause we just pass it to find within className attribute
+         * cause it will be passed to checkNodeExistsInChildEl | checkTextInsertedInParentEl as string
          * @type {string}
          */
         mutTargetChildName: Exclude<string, `[class*=`>;
@@ -109,7 +129,7 @@ export class MutationObserverManager extends DOMTools {
         /**
          * This must be a valid selector or a reference to an existing DOM element,
          * because it is passed to document.querySelector for checking
-         * preferably you find the unchangeable ancestor existed first after load
+         * preferably you find the unchangeable ancestor existed first on loading the web
          * @type {string}
          */
         domLoadedSourceParentNode: GenericSelector | string;
@@ -122,13 +142,8 @@ export class MutationObserverManager extends DOMTools {
 
     constructor() {
         super();
-        this.errorCodes = {
-            elementNotFound: "Element not found.",
-            emptyConfig: "Config for MutationObserverManager is empty. Please provide valid configuration.",
-            noSpecifiedCase: "Switch statement doesn't have any suitable case"
-        }
 
-        this.config = { mode: '', mutTargetChildName: '', domLoadedSourceParentNode: '[class^=""] [class*=""]', subtree: false };
+        this.config = { mode: 'addedNode', mutTargetChildName: '', domLoadedSourceParentNode: '[class^=""] [class*=""]', subtree: false };
         this.foundTargetNode = false
         this.mutatedTargetParentNode = null
         this.mutatedTargetChildNode = null
@@ -141,17 +156,16 @@ export class MutationObserverManager extends DOMTools {
         let targetElement = document.querySelector(domLoadedSourceParentNode)
         if (targetElement) {
             this.mutatedTargetParentNode = targetElement
-            this.mutatedTargetChildNode = mutTargetChildName
             this.subtree = subtree
         } else {
             // Not to throw error here as mutationObserver can still observe unloaded elements
-            throw new mutObsError('elementNotFound', this.errorCodes['elementNotFound'] + ' ' + domLoadedSourceParentNode);
+            throw MutObsError.elementNotFound(domLoadedSourceParentNode);
         }
 
-        console.log(`mutate.startObserver func/ parent: ${domLoadedSourceParentNode}, mode: ${mode}, mutatedChild: ${mutTargetChildName}`)
+        console.log(`mutate.startObserver srcParent: ${domLoadedSourceParentNode}, mode: ${mode}, mutatedChild: ${mutTargetChildName}`)
 
         if (!mode || !mutTargetChildName) {
-            throw Error(this.errorCodes['emptyConfig']);
+            throw MutObsError.emptyConfig()
         }
 
         const observer = new MutationObserver((mutationsList, observer) => {
@@ -193,7 +207,7 @@ export class MutationObserverManager extends DOMTools {
                     this.stopObserverBeforeDomChanges(observer, callback)
                     break;
                 default:
-                    throw Error(this.errorCodes['noSpecifiedCase']);
+                    throw MutObsError.noSpecifiedCase()
             }
 
         });

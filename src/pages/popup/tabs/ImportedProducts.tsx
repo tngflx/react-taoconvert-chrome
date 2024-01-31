@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { idb } from "../../../shared/storages/indexDB";
+import { Item, idb } from "../../../shared/storages/indexDB";
 
 let CircularButton = ({ onClick, icon, bgColor, hoverBgColor }) => {
     const colors = {
@@ -31,18 +31,14 @@ export const ImportedProducts = () => {
     const [loading, setLoading] = useState(true);
     const [products, setProducts] = useState([]);
 
-    const fetchDB = () => {
+    const fetchDB = async () => {
         setLoading(true); // Set loading to true before starting the fetch
-        idb.retrieve()
+        idb.retrieve('sort')
             .then(data => {
-                data = data.sort((a, b) =>
-                    new Date(b.product_create_time).getTime() - new Date(a.product_create_time).getTime()
-                );
                 setProducts(data);
+                setLoading(false);
             })
-            .finally(() => {
-                setLoading(false); // Set loading to false after fetch completion
-            });
+
     };
 
     useEffect(() => {
@@ -115,29 +111,59 @@ export const ImportedProducts = () => {
             ) : (
                 <div className="bg-white dark:bg-white-800 h-[calc(100vh-4.5em)] justify-center items-center mx-4">
                     <ul role="list" className="divide-y divide-white-100 pb-16">
-                        {products.map((product) => (
-                            <li key={product.product_create_time} className="flex justify-between gap-x-6 py-5">
+                        {products.map(({
+                            orderId,
+                            product_main_title,
+                            selected_product_variant,
+                            bought_price,
+                            bought_quantity,
+                            product_web_link,
+                            product_image_url,
+                            product_create_time,
+                            tracking_info,
+                            freight_delivery_data: {
+                                tracking_code,
+                                delivery_status_tracklink,
+                                date_added,
+                                total_weight,
+                                total_price,
+                                delivery_status,
+                            }
+                        }) => (
+                            <li key={product_create_time} className="flex justify-between gap-x-6 py-5">
                                 <div className="flex min-w-0 gap-x-4">
-                                    <img className="h-12 w-12 flex-none bg-gray-500" src={product.product_image_url} alt="" />
+                                    <div className="flex w-20 flex-col items-center">
+                                        <img className="h-12 w-12 bg-gray-500 mb-2" src={product_image_url} alt="" />
+                                        {(delivery_status.toLowerCase() === 'none' && (
+                                            <span className="status-indicator bg-red-500 text-white p-1.5 rounded-full animate-pulse text-center">New Entry</span>
+                                        )) || (delivery_status.toLowerCase() === 'on the way' && (
+                                            <span className="status-indicator bg-yellow-400 text-black p-1.5 rounded-full text-center">{delivery_status}</span>
+                                        )) || (delivery_status.toLowerCase() === 'wait to weight' && (
+                                            <span className="status-indicator bg-yellow-400 text-black p-1.5 rounded-full text-center">{delivery_status}</span>
+                                        )) || (delivery_status.toLowerCase() === 'wait for deliver' && (
+                                            <span className="status-indicator bg-orange-500 text-white p-1.5 rounded-full text-center">{delivery_status}</span>
+                                        )) || (delivery_status.toLowerCase() === 'delivery' && (
+                                            <span className="status-indicator bg-green-500 text-white p-1.5 rounded-full text-center">{delivery_status}</span>
+                                        ))}
+                                    </div>
                                     <div className="min-w-0 flex-auto">
-                                        <p className="text-sm font-semibold leading-6 text-white-900">{product.product_main_title}</p>
-                                        <p className="mt-1 text-xs leading-5 text-white-900">{product.product_selected_title}</p>
-                                        {!product.is_freight_processed && (
-                                            <span className="new-indicator bg-green-500 text-white p-1 rounded-full animate-pulse">New</span>
-                                        )}
+                                        <p className="text-sm font-semibold leading-6 text-white-900">{product_main_title}</p>
+                                        <p className="mb-2 text-xs leading-5 text-white-900">{selected_product_variant}</p>
                                     </div>
                                 </div>
+
+
                                 <div className="shrink-0 sm:flex sm:flex-col sm:items-end">
                                     <p className="text-sm leading-6 text-gray-900">Buttons</p>
                                     <div className="mt-1 flex items-center gap-x-1.5">
                                         <CircularButton
-                                            onClick={() => handleMinusClick(product.orderId)}
+                                            onClick={() => handleMinusClick(orderId)}
                                             icon="-"
                                             bgColor="blue"
                                             hoverBgColor='red'
                                         />
                                         <CircularButton
-                                            onClick={() => handlePlusClick(product.orderId)}
+                                            onClick={() => handlePlusClick(orderId)}
                                             icon="+"
                                             bgColor="blue"
                                             hoverBgColor="green"

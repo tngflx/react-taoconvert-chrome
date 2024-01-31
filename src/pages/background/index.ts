@@ -16,6 +16,9 @@ interface TrackingInfo {
     // Add other properties if necessary
 }
 
+/**
+ * One-time chrome message listener and short-lived
+ */
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     switch (request?.action) {
         case 'get_tracking_code':
@@ -137,7 +140,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 let popupPort;
 
-// Listen for a connection from the content script
+/**
+ * Listener for a persistent connection content-script and background ts
+ */
 chrome.runtime.onConnect.addListener((port) => {
     if (port.name === 'content-script') {
 
@@ -156,7 +161,6 @@ chrome.runtime.onConnect.addListener((port) => {
                     delete resp.msg_action; //Bug in chrome where msg_action will stuck on previous call
 
                     port.postMessage({ msg_action: "process_freight_html", ...resp })
-                    //idb.add({ orderId, ...rest })
                     break;
 
                 case 'save_db':
@@ -170,14 +174,34 @@ chrome.runtime.onConnect.addListener((port) => {
 
 
 function checkFreightIfTrackingExists(expressId) {
-    const trackingEndpoint = `https://nswex.com/index.php?route=account/order&filter_order_status=5&filter_tracking_number=${expressId}`;
+    const url = `https://nswex.com/index.php?route=account/order&filter_tracking_number=${expressId}`;
+    const referrer = "https://nswex.com/index.php?route=account/order"
+    const headers = {
+        "Accept": "text/html",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+    };
 
-    // Fetch the HTML content from the endpoint
-    return fetch(trackingEndpoint)
-        .then(response => response.text())
-        .then(html => html)
+    const fetchOptions: RequestInit = {
+        method: "GET",
+        mode: "cors",
+        credentials: "include" as RequestCredentials,
+        headers,
+        referrer,
+        referrerPolicy: "strict-origin-when-cross-origin"
+    };
+
+    return fetch(url, fetchOptions)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.text();
+        })
         .catch(error => {
-            console.error('Error fetching or parsing HTML:', error);
+            // Handle errors here
+            console.error("Fetch error:", error);
         });
+
 }
 

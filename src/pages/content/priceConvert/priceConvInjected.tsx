@@ -258,7 +258,25 @@ if (location.href.includes("https://item.taobao.com/")) {
         })
 
     } catch (e) {
-        console.log(e)
+        if (e.errorCode == 'elementNotFound') {
+            itemPageDivToObserve = "ul.tb-meta"
+            mutObserverManager.config = { mode: 'addedText', mutTargetChildName: "tb-rmb-num", domLoadedSourceParentNode: itemPageDivToObserve, subtree: true }
+
+            mutObserverManager.startObserver(() => {
+                boxRenderer.removeTrailingTaoConvPricebox()
+
+                const promo_price_element = document.querySelector('strong.tb-promo-price')
+                const original_price_element = document.getElementById('J_StrPrice')
+
+                if (promo_price_element) {
+                    boxRenderer.createPriceBox(original_price_element, "md")
+
+                    const promo_price_parent = document.querySelector("div#J_PromoHd")
+                    boxRenderer.createPriceBox(promo_price_element, "", promo_price_parent)
+                } else
+                    boxRenderer.createPriceBox(original_price_element, "lg")
+            })
+        }
     }
 
     function createDownloadListsButton() {

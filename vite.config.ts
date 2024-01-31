@@ -61,7 +61,7 @@ export default defineConfig({
                 priceConvStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
                 buyerTrade: resolve(pagesDir, 'content', 'buyerTradePage', 'index.ts'),
                 tailwindStyle: resolve(srcDir, 'assets', 'style', 'tailwind.css'),
-                freightPage: resolve(pagesDir, 'content', 'freightPage', 'nswex', 'index.ts'),
+                freightPage: resolve(pagesDir, 'content', 'freightPage', 'index.ts'),
                 background: resolve(pagesDir, 'background', 'index.ts'),
                 popup: resolve(pagesDir, 'popup', 'index.html')
             },
@@ -70,7 +70,7 @@ export default defineConfig({
                 chunkFileNames: isDev ? 'assets/js/[name].js' : 'assets/js/[name].[hash].js',
                 assetFileNames: assetInfo => {
                     const { name } = path.parse(assetInfo.name);
-          return `assets/[ext]/${name}.chunk.[ext]`;
+                    return `assets/[ext]/${name}.chunk.[ext]`
                 },
             },
         },

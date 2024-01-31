@@ -16,13 +16,18 @@ export class priceBoxRenderer {
      * react render taoconvert pricebox
      * @param item_price_element This is directly point to the originPrice or extraPrice element, so that we can find price straight
      * @param taoconvert_pricebox_container_size pricebox container that render according to specific size
-     * @param insert_to_target_el The target element that we want to insertAdjacentHTML to
+     * @param insert_to_target_el The target element that we want to insertAdjacentHTML('afterend') relative to item_price_element
      * @returns
      */
-    createPriceBox(item_price_element: Element, taoconvert_pricebox_container_size: '' | 'lg' | 'sm', insert_to_target_el?: Element): void {
+    createPriceBox(item_price_element: Element, taoconvert_pricebox_container_size: '' | 'lg' | 'md' | 'sm', insert_to_target_el?: Element,): void {
         let target_el_to_insert = insert_to_target_el ? insert_to_target_el : item_price_element;
 
-        const item_price = findChildThenParentElbyClassName(item_price_element, 'Price--priceText')?.textContent
+        let item_price = findChildThenParentElbyClassName(item_price_element, 'Price--priceText')?.textContent
+        // Fix for old itempage taobao
+        item_price = item_price ? item_price : findChildThenParentElbyClassName(item_price_element, 'tb-rmb-num')?.textContent
+
+        // This is important as sometimes mutationObserver caught in middle rendering item_price as there are no value,
+        // so it's best to return
         if (!item_price || item_price === '') return;
 
         let taoConvertContainer = document.createElement('div');
