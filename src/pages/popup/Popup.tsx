@@ -5,9 +5,10 @@ import withSuspense from '@src/shared/hoc/withSuspense';
 import withErrorBoundary from '@src/shared/hoc/withErrorBoundary';
 
 import { Outlet } from "react-router-dom";
-import { AutoUploadTopup } from "./tabs/autoUploadTopup";
-import { ListsDownload } from "./tabs/listsDownload";
-import { ImportedProducts } from "./tabs/importedProducts";
+import { AutoUploadTopupTab } from "./tabs/autoUploadTopup";
+
+import { ImportedProductsTab } from "./tabs/impProdContextProvider";
+import { ListsDownloadTab } from "./tabs/listsDownloader";
 
 const CompanyLogo = () => {
     return (
@@ -69,9 +70,9 @@ const Popup = () => {
             <Routes>
                 <Route path="/" element={<Container />}>
                     <Route index element={<Home />} />
-                    <Route path="/importedProducts" element={<ImportedProducts />} />
-                    <Route path="/autoUploadTopup" element={<AutoUploadTopup />} />
-                    <Route path="/listsDownload" element={<ListsDownload />} />
+                    <Route path="/importedProducts" element={<ImportedProductsTab />} />
+                    <Route path="/autoUploadTopup" element={<AutoUploadTopupTab />} />
+                    <Route path="/listsDownload" element={<ListsDownloadTab />} />
                 </Route>
             </Routes>
         </MemoryRouter>

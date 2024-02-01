@@ -92,18 +92,18 @@ port.onMessage.addListener(async (resp) => {
     if (location.href.includes("https://buyertrade.taobao.com/")) {
         const buyerTradeDivToObserve = 'td[class*="bought-wrapper-mod__thead-operations-container"]'
 
-        //let buyerTradeWrapper = new MutationObserverManager();
-        //buyerTradeWrapper.config = { mode: 'addedNode', mutatedTargetChildNode: buyerTradeDivToObserve, mutatedTargetParentNode: buyerTradeHeaderToObserve, subtree: false };
-        //buyerTradeWrapper.startObserver(injectBuyerTradePage);
-
+        // This is rightmost wrapper for flag, delete / threadoperations list on buyertrade page
         const bought_threadop_wrapper_els = Array.from(document.querySelectorAll(buyerTradeDivToObserve))
 
         for (const bought_threadop_wrapper_el of bought_threadop_wrapper_els.slice(0, 15) as Element[]) {
+
+            // Need to do this as there's no className or Id or even attrib to capture the wrapper
+            // Do not use querySelector as it will only find children and not ancestor
             const bottom_row_buyertrade_wrapper_el = findChildThenParentElbyClassName(bought_threadop_wrapper_el, 'sol-mod__no-br', 'td');
 
-            // buyer trade page column 1 2 3
+            // buyer trade lists column 1 2 3
             const columns = Array.from(bottom_row_buyertrade_wrapper_el.parentNode.children).filter(child => child.nodeType === 1);
-            const is_tracking_el_exists = checkNodeExistsInChildEl(columns[5], 'viewLogistic')
+            const is_tracking_el_exists = columns[5].querySelector('#viewLogistic')
 
             const product_main_title = columns[0].querySelectorAll("div[style^='margin-left'] a span")?.[2]?.textContent
             const selected_product_variant = columns[0].querySelectorAll("span[class^='production-mod__sku-item'] span")?.[2]?.textContent
@@ -121,13 +121,15 @@ port.onMessage.addListener(async (resp) => {
             const product_create_date = upper_row_buyertrade_wrapper_el.querySelector("span[class^='bought-wrapper-mod__create-time']")?.textContent
 
             if (is_tracking_el_exists) {
-                createBuyerTradeButton(bought_threadop_wrapper_el as HTMLElement, handleButtonClick)
-
                 const tracking_info = await new Promise<TrackingInfo>((resolve) => {
                     chrome.runtime.sendMessage({ action: "get_tracking_code", orderId }, (tracking_info) => {
                         resolve(tracking_info);
                     });
                 });
+
+                if (!tracking_info) continue;
+
+                createBuyerTradeButton(bought_threadop_wrapper_el as HTMLElement, handleButtonClick)
 
                 const db_data: BuyerTradeData = {
                     orderId,

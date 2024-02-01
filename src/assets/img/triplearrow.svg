@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1"
+    x="0px" y="0px" style="height: 100%; width: 100%;" viewBox="47.24 26.35 73.5 42.9">
+    <defs>
+        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color: #e74c3c"></stop>
+            <stop offset="100%" style="stop-color: #f39c12"></stop>
+        </linearGradient>
+    </defs>
+    <polygon class="threearrows"
+        points="103.273,26.352 77.654,26.352 95.121,47.803 77.654,69.255 103.273,69.255 120.74,47.803"
+        style="fill: url(#gradient); animation: oscillate 4s infinite alternate; transform-origin: center; animation-delay: 2s;"></polygon>
+    <polygon class="threearrows"
+        points="70.721,26.352 62.359,26.352 79.827,47.803 62.359,69.255 70.721,69.255 88.189,47.803"
+        style="fill: url(#gradient); animation: oscillate 4s infinite alternate; transform-origin: center; animation-delay: 1s;"></polygon>
+    <polygon class="threearrows"
+        points="55.603,26.352 47.241,26.352 64.709,47.803 47.241,69.255 55.603,69.255 73.071,47.803"
+        style="fill: url(#gradient); animation: oscillate 4s infinite alternate; transform-origin: center;"></polygon>
+    <style>
+        @keyframes oscillate {
+        0%, 100% {
+        transform: scaleX(1);
+        }
+        50% {
+        transform: scaleX(0.8);
+        }
+        }
+    </style>
+</svg>

@@ -41,12 +41,16 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     .then(async data => {
                         const decoder = new TextDecoder('gbk');
                         const parsedData: TrackingInfo = JSON.parse(decoder.decode(data));
-                        const { expressName, expressId } = parsedData;
 
-                        sendResponse({ expressId, expressName })
+                        if (parsedData?.expressName && parsedData?.expressId) {
+                            const { expressName, expressId } = parsedData;
+                            sendResponse({ expressId, expressName });
+                        } else {
+                            sendResponse(null);
+                        }
                     })
                     .catch(error => {
-                        console.error("Error querying internal API:", error);
+                        console.error("Error querying buyertrade.taobao.com :", error);
                         sendResponse({ status: false, error: error.message });
 
                     });
@@ -102,7 +106,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 fetch(url, {
                     headers: {
                         "accept-language": "en;q=0.5",
-                        "sec-ch-ua-platform": "\"Windows\"",
                         "sec-fetch-dest": "empty",
                         "sec-fetch-mode": "cors",
                         "sec-fetch-site": "same-site",
