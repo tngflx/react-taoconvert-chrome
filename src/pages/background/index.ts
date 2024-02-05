@@ -1,8 +1,7 @@
 import reloadOnUpdate from 'virtual:reload-on-update-in-background-script';
 import 'webextension-polyfill';
 import { idb } from '../../shared/storages/indexDB';
-import { h5Encryption } from '../../shared/h5api.taobao/sign';
-
+import { queryBuilder } from './apiQueryBuilder';
 
 reloadOnUpdate('pages/background');
 
@@ -20,8 +19,8 @@ interface TrackingInfo {
  * One-time chrome message listener and short-lived
  */
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    switch (request?.action) {
-        case 'get_tracking_code':
+    switch (request?.msg_action) {
+        case 'get_buyertrade_tracking_code':
             chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
                 // Extract the necessary cookies from the cookies array
                 const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
@@ -56,83 +55,34 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     });
             });
             break;
+
         case 'get_itempage_products':
             //e.__processRequestMethod, e.__processRequestType, e.__processToken, e.__processRequestUrl, e.middlewares, e.__processRequest, c]
+            const { url_param_data } = request;
 
             chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
-                const h5_tk_token_array = cookies
-                    .filter(cookie => cookie.name.includes('m_h5_tk'))
-
-                const token = h5_tk_token_array[0].value.split('_')[0]
-
-                const h5_tk_cookies_string = h5_tk_token_array
-                    .map(cookie => `${cookie.name}=${cookie.value}`)
-                    .join('; ');
-
-                const time = (new Date).getTime()
-                const params = {
-                    jsv: '2.6.1',
-                    appKey: '12574478',
-                    t: time,
-                    api: 'mtop.taobao.pcdetail.data.get',
-                    v: '1.0',
-                    isSec: '0',
-                    ecode: '0',
-                    timeout: '10000',
-                    ttid: '2022@taobao_litepc_9.17.0',
-                    AntiFlood: 'true',
-                    AntiCreep: 'true',
-                    dataType: 'json',
-                    valueType: 'string',
-                    preventFallback: 'true',
-                    type: 'json',
-                    data: JSON.stringify({ ...request.data }),
-                };
-
-                const { signH5ItemPageReq } = new h5Encryption(token, time, params.data)
-                params['sign'] = signH5ItemPageReq()
-
-                const order = ['jsv', 'appKey', 't', 'sign', 'api', 'v', 'isSec', 'ecode', 'timeout', 'ttid', 'AntiFlood', 'AntiCreep', 'dataType', 'valueType', 'preventFallback', 'type', 'data'];
-                const reorderedParams = Object.fromEntries(order.map(key => [key, params[key]]));
-
-                const queryString = Object.entries(reorderedParams)
-                    .map(([key, value]) => {
-                        return `${key}=${encodeURIComponent(value as any)}`;
-                    })
-                    .join("&");
-
-                const url = `https://h5api.m.taobao.com/h5/mtop.taobao.pcdetail.data.get/1.0/?${queryString}`;
-
-                fetch(url, {
-                    headers: {
-                        "accept-language": "en;q=0.5",
-                        "sec-fetch-dest": "empty",
-                        "sec-fetch-mode": "cors",
-                        "sec-fetch-site": "same-site",
-                        "sec-gpc": "1",
-                        "Cookie": h5_tk_cookies_string,
-                        "Content-Type": "application/json",  // Add this line
-                    },
-                    referrer: "https://item.taobao.com/",
-                    referrerPolicy: "strict-origin-when-cross-origin",
-                    method: "GET",
-                    mode: "cors",
-                    credentials: "include"
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        sendResponse(data)
-                    })
-                    .catch(err => {
-                        console.error('h5api.taobao is not working well :(')
+                const _queryBuilder = new queryBuilder(cookies, url_param_data)
+                _queryBuilder.fetchTaoItemPage()
+                    .then(res => {
+                        sendResponse(res)
+                    }).catch(e => {
+                        sendResponse(e)
                     })
             });
 
             break;
 
         case 'get_itempage_reviews':
-
-
+            const data = { "itemId": "729987628948", "bizCode": "ali.china.tmall", "channel": "pc_detail", "pageSize": 20, "pageNum": 1 }
+            chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
+                const _queryBuilder = new queryBuilder(cookies, url_param_data)
+                _queryBuilder.fetchTaoReviewPage()
+                    .then(res => {
+                        sendResponse(res)
+                    }).catch(e => {
+                        sendResponse(e)
+                    })
+            });
             break;
 
         default:
@@ -151,23 +101,39 @@ chrome.runtime.onConnect.addListener((port) => {
 
         // Save the port for later communication
         popupPort = port;
-
         // Listen for messages from the content script
         port.onMessage.addListener(async (resp) => {
-            const { msg_action, orderId, tracking_info, ...rest } = resp;
+            const { msg_action, db_data, first_query } = resp;
+            const { orderId, buyertrade_tracking_info, ...rest } = db_data
             switch (msg_action) {
                 case 'get_tracking_info':
 
                 case 'is_freight_processed':
-                    const freight_html = await checkFreightIfTrackingExists(tracking_info?.expressId)
-                    resp.freight_html = freight_html;
+                    if (first_query) {
+                        const [delivery_html, ontheway_html, arrived_html] = await Promise.all([
+                            checkFreightIfTrackingExists('delivery_info', buyertrade_tracking_info?.expressId),
+                            checkFreightIfTrackingExists('ontheway_info'),
+                            checkFreightIfTrackingExists('arrived_info')
+                        ])
+
+                        resp.freight_html = {
+                            delivery_html,
+                            ontheway_html,
+                            arrived_html
+                        };
+                    } else {
+                        resp.freight_html = {
+                            delivery_html: await checkFreightIfTrackingExists('delivery_info', buyertrade_tracking_info?.expressId)
+                        };
+                    }
+
                     delete resp.msg_action; //Bug in chrome where msg_action will stuck on previous call
 
                     port.postMessage({ msg_action: "process_freight_html", ...resp })
                     break;
 
                 case 'save_db':
-                    idb.add({ orderId, tracking_info, ...rest })
+                    idb.add({ orderId, ...db_data })
                     break;
                 default:
             }
@@ -176,9 +142,23 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 
-function checkFreightIfTrackingExists(expressId) {
-    const url = `https://nswex.com/index.php?route=account/order&filter_tracking_number=${expressId}`;
-    const referrer = "https://nswex.com/index.php?route=account/order"
+function checkFreightIfTrackingExists(options: string, expressId?: Object) {
+    let url: string;
+
+    // Needed as 
+    switch (options) {
+        case 'arrived_info':
+            url = 'https://nswex.com/index.php?route=account/order_product&filter_order_product_status=4'
+            break;
+        case 'delivery_info':
+            url = `https://nswex.com/index.php?route=account/order&filter_tracking_number=${expressId}`
+            break;
+        case 'ontheway_info':
+            url = 'https://nswex.com/index.php?route=account/order_product&filter_order_product_status=3'
+            break;
+        default:
+    }
+
     const headers = {
         "Accept": "text/html",
         "Sec-Fetch-Mode": "cors",
@@ -189,9 +169,7 @@ function checkFreightIfTrackingExists(expressId) {
         method: "GET",
         mode: "cors",
         credentials: "include" as RequestCredentials,
-        headers,
-        referrer,
-        referrerPolicy: "strict-origin-when-cross-origin"
+        headers
     };
 
     return fetch(url, fetchOptions)

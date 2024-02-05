@@ -1,3 +1,9 @@
+import { render } from "react-dom";
+import ButtonRenderer from "../components/renderer/taoButtonRenderer";
+import { DOMTools, MutationObserverManager } from "../utils/misc";
+import { comment } from "postcss";
+const mutObserverManager = new MutationObserverManager();
+const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
 export async function taoDownloader() {
     const all_sku_items = document.querySelectorAll('div.skuItemWrapper .skuItem')
     const h5api_data: { data: any } = await new Promise((resolve) => {
@@ -30,50 +36,51 @@ export async function taoDownloader() {
             })
         };
 
-        chrome.runtime.sendMessage({ action: 'get_itempage_products', url_param_data }, h5api_data => {
-            resolve(h5api_data)
-        })
+        resolve({data: 'ds'})
+        //chrome.runtime.sendMessage({ msg_action: 'get_itempage_products', url_param_data }, h5api_data => {
+        //    resolve(h5api_data)
+        //})
 
     })
-    const { data: { skuBase, skuCore, item, seller } } = h5api_data;
+    //const { data: { skuBase, skuCore, item, seller } } = h5api_data;
 
-    const remapped_skubase = skuBase.skus.map(({ propPath, skuId }) => {
-        const prop_path_segments = propPath.split(";");
+    //const remapped_skubase = skuBase.skus.map(({ propPath, skuId }) => {
+    //    const prop_path_segments = propPath.split(";");
 
-        const all_product_props = prop_path_segments.map((segment) => {
-            // Split each segment by ":"
-            const [pid, vid] = segment.split(":").map((item) => item.trim());
+    //    const all_product_props = prop_path_segments.map((segment) => {
+    //        // Split each segment by ":"
+    //        const [pid, vid] = segment.split(":").map((item) => item.trim());
 
-            // Find corresponding names for pid and vid in props
-            const prop = skuBase.props.find((p) => p.pid === pid);
+    //        // Find corresponding names for pid and vid in props
+    //        const prop = skuBase.props.find((p) => p.pid === pid);
 
-            const sku2info: Sku2Info = skuCore.sku2info;
-            const { price, quantity } = Object.entries(sku2info).find(([key]) => key === skuId)?.[1]
+    //        const sku2info: Sku2Info = skuCore.sku2info;
+    //        const { price, quantity } = Object.entries(sku2info).find(([key]) => key === skuId)?.[1]
 
-            if (prop) {
-                const value = prop.values.find((v) => v.vid === vid);
-                if (value) {
-                    const preprocess_sku = {
-                        name_segment: value.name,
-                        price_text: price?.priceText,
-                        quantity
-                    }
+    //        if (prop) {
+    //            const value = prop.values.find((v) => v.vid === vid);
+    //            if (value) {
+    //                const preprocess_sku = {
+    //                    name_segment: value.name,
+    //                    price_text: price?.priceText,
+    //                    quantity
+    //                }
 
-                    return value?.image ? { image: value.image, ...preprocess_sku } : preprocess_sku
+    //                return value?.image ? { image: value.image, ...preprocess_sku } : preprocess_sku
 
-                }
-            }
-        }).reduce((acc, { name_segment, image, price_text, quantity }) => {
-            acc.product_name.push(name_segment)
-            if (image)
-                acc.product_image_link = image
-            acc.product_price = price_text
-            acc.product_avail_quantity = quantity
-            return acc
-        }, { product_name: [], product_image_link: '', product_price: '', product_avail_quantity: '' })
+    //            }
+    //        }
+    //    }).reduce((acc, { name_segment, image, price_text, quantity }) => {
+    //        acc.product_name.push(name_segment)
+    //        if (image)
+    //            acc.product_image_link = image
+    //        acc.product_price = price_text
+    //        acc.product_avail_quantity = quantity
+    //        return acc
+    //    }, { product_name: [], product_image_link: '', product_price: '', product_avail_quantity: '' })
 
-        return { ...all_product_props, skuId }
-    })
+    //    return { ...all_product_props, skuId }
+    //})
 
 
 
@@ -83,8 +90,47 @@ export async function taoDownloader() {
 
     })
 
-    const review_tab_container = document.querySelector('div[class^="Tabs--container"]')
-    const review_with_pic_orvid = review_tab_container.querySelectorAll('div[class^="Comments--tagList"]')[1]
+    reviewTabScrape()
+}
+
+function reviewTabScrape() {
+    let commentTabToObserve = 'div[class^="Tabs--root"] [class^="Tabs--container"]';
+
+    const review_tab_container = document.querySelector(commentTabToObserve)
+    const review_with_pic_orvid = review_tab_container.querySelectorAll('div[class^="Comments--tagList"] button.detail-btn')[1] as HTMLElement
+    const tabs_header_el = document.querySelectorAll('div[class^="Tabs--header"] [class^="Tabs--title"]')[1] as HTMLElement
+    tabs_header_el.click()
+    review_with_pic_orvid.click()
 
 
+    mutObserverManager.config = { mode: 'addedNode', mutTargetChildName: 'Comment--album', domLoadedSourceParentNode: commentTabToObserve, subtree: true }
+    mutObserverManager.startObserver(() => {
+        const comment_album_els = review_tab_container.querySelectorAll('div[class^="Comment--album"]')
+        Array.from(comment_album_els).forEach(photo => {
+            createImagePlusButton(photo)
+        })
+    })
+}
+
+function createImagePlusButton(comment_album_el) {
+    const button_container = document.createElement('div');
+    button_container.classList.add('tao_convert_button');
+
+    comment_album_el.insertAdjacentElement('afterend', button_container)
+
+    function onClickHandler() {
+
+    }
+
+    // Render the BuyerTradeButtonWrapper component and pass the button_wrapper as a prop
+    render(
+        <ButtonRenderer
+            onClickHandler={onClickHandler}
+            containerElement={button_container}
+            buttonWrapperClasses="float-left inline-flex mx-4"
+            buttonName="taoImport"
+            buttonTwindClasses="taoconv_button bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
+        />,
+        button_container
+    );
 }

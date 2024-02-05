@@ -1,5 +1,5 @@
 export class h5Encryption {
-    token: string;
+    token: any;
     time: Date
     data: UrlParamData
     appKey: string
@@ -12,6 +12,7 @@ export class h5Encryption {
     }
 
     signH5ItemPageReq() {
+        console.log(this.token, this.time, this.data, this.appKey)
         return this.h5ItemPage(this.token + "&" + this.time + "&" + this.appKey + "&" + this.data)
     }
 

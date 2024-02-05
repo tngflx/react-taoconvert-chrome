@@ -13,7 +13,7 @@ interface BuyerTradeData {
     product_web_link: string | null;
     product_image_url: string | null;
     product_create_date: string | null;
-    tracking_info: TrackingInfo | null;
+    buyertrade_tracking_info: TrackingInfo | null;
 }
 interface ProductData {
     orderId: string;
@@ -24,7 +24,7 @@ interface ProductData {
     product_web_link: string;
     product_image_url: string;
     product_create_date: string;
-    tracking_info: string; // or replace with a specific type for tracking_info
+    buyertrade_tracking_info: TrackingInfo; // or replace with a specific type for tracking_info
     freight_delivery_data: {
         tracking_code: string;
         delivery_status_tracklink: string;

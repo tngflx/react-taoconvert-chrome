@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { render } from 'react-dom';
 
-const ButtonRenderer = ({ onClickHandler, containerElement, buttonWrapperClasses, buttonName }) => {
+const ButtonRenderer = ({ onClickHandler, containerElement, buttonWrapperClasses, buttonName, buttonTwindClasses }) => {
     const buttonRef = useRef(null);
 
     useEffect(() => {
@@ -12,8 +12,8 @@ const ButtonRenderer = ({ onClickHandler, containerElement, buttonWrapperClasses
         render(
             <div className={buttonWrapperClasses}>
                 <button
-                    onClick={() => onClickHandler()}
-                    className="taoconv_button bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
+                    onClick={onClickHandler}
+                    className={buttonTwindClasses}
                     ref={buttonRef}
                 >
                     {buttonName}

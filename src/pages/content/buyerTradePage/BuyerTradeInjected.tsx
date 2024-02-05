@@ -1,87 +1,122 @@
 import { render } from 'react-dom';
 import { DOMTools } from '../utils/misc';
 import ButtonRenderer from '../components/renderer/taoButtonRenderer';
-const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = new DOMTools
+const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
 
 const port = chrome.runtime.connect({ name: 'content-script' });
 
-const createBuyerTradeButton = (bought_threadop_wrapper_el, onClickHandler) => {
+const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
     const button_container = document.createElement('div');
     button_container.classList.add('tao_convert_button');
 
     bought_threadop_wrapper_el.insertAdjacentElement('afterbegin', button_container)
 
+    const handleButtonClick = () => {
+
+        console.log('im clicked')
+
+    }
+
     // Render the BuyerTradeButtonWrapper component and pass the button_wrapper as a prop
     render(
         <ButtonRenderer
-            onClickHandler={onClickHandler}
+            onClickHandler={handleButtonClick}
             containerElement={button_container}
             buttonWrapperClasses="float-left inline-flex mx-4"
             buttonName="taoImport"
+            buttonTwindClasses="taoconv_button bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
         />,
         button_container
     );
 };
 
-const handleButtonClick = () => {
-
-    console.log('im clicked')
-
-}
-
-
 
 port.onMessage.addListener(async (resp) => {
-    const { msg_action, freight_html } = resp;
+    const { msg_action, db_data, freight_html, freight_otw_arrive_data } = resp;
+    const { buyertrade_tracking_info } = db_data
+
     switch (msg_action) {
         case 'process_freight_html':
             const parser = new DOMParser();
-            const doc = parser.parseFromString(freight_html, 'text/html');
 
-            // freight_tracking_el is el for search result tracking code on freight
-            const nswex_search_result_el = doc.querySelector('.panel-default')?.nextElementSibling;
-            let freight_delivery_status: string;
+            const { delivery_html, ontheway_html, arrived_html } = Object.entries(freight_html).reduce((acc, [key, values]) =>
+                (acc[key] = parser.parseFromString(values as string, 'text/html'), acc)
+                , {}) as { delivery_html: Document, ontheway_html: Document, arrived_html: Document };
+
             /**
-             * TODO : 
-             * 1) use freight_tracking_code to check when arrival
-             * 2) 
+             * For first run just accept every parsed html
+             * NOTE : ontheway_html and arrived_html had slight different from how normal delivery_html shows search result
+             * non delivery_html have searchedtextresult as childrenof orderproductdiv
              */
-            const text_search_result_el = nswex_search_result_el?.tagName?.toLowerCase() === 'p'
-                ? nswex_search_result_el.textContent : null
 
-            const table_search_result_columns_els: Element[] = Array.from(nswex_search_result_el.querySelectorAll('table.table-bordered tbody td'))
+            if (ontheway_html && arrived_html) {
+                process_html(ontheway_html, 'ontheway');
+                process_html(arrived_html, 'arrived');
+            } else
+                process_html(delivery_html, 'delivery')
 
-            if (table_search_result_columns_els.length > 0) {
-                const freightProps = {
-                    tracking_code: table_search_result_columns_els[1].querySelector('.text-nowrap')?.firstChild.textContent,
-                    delivery_status_tracklink: table_search_result_columns_els[1].querySelector('a.agree')?.getAttribute('href'),
-                    date_added: table_search_result_columns_els[3].textContent,
-                    total_weight: table_search_result_columns_els[6].textContent,
-                    total_price: table_search_result_columns_els[8].textContent,
-                    delivery_status: table_search_result_columns_els[7].querySelector('span.order_status')?.textContent ||
-                        table_search_result_columns_els[7].querySelector('span#order_product_status')?.textContent
-                };
-                freight_delivery_status = freightProps.delivery_status
+            function process_html(html_element, source_html_name) {
+                // freight_tracking_el is el for search result tracking code on freight
+                const nswex_search_panel = html_element.querySelector('div[class="panel panel-default"]') as HTMLElement
 
-                resp.freight_delivery_data = Object.fromEntries(
-                    (Object.entries(freightProps) as [string, string][])
-                        // Trimming and replace newline
-                        .map(([key, value]) => [key, typeof (value) === 'string' ? value.trim().replace(/\n/g, '') : null])
-                        // Filter out undefined/null/empty value
-                        .filter(([, value]) => value && value !== '')
-                ) as { [key: string]: string };
+                const next_sibiling = nswex_search_panel?.nextElementSibling;
+                const nextnextsib_or_not_el =
+                    next_sibiling?.tagName.toLowerCase() === 'div' && next_sibiling.id === 'submit_order_product'
+                        ? next_sibiling.firstElementChild
+                        : next_sibiling
+                const text_search_result_el = nextnextsib_or_not_el?.tagName.toLowerCase() === 'p' ? nextnextsib_or_not_el?.textContent : null
 
-            }
+                const table_search_result_columns_els = findChildThenParentElbyClassName(nswex_search_panel, 'table-bordered', 'table')?.querySelectorAll('tbody td')
 
-            if (text_search_result_el === "You have not made any previous orders!") {
-                resp.freight_delivery_data = Object.assign({}, resp.freight_delivery_data, { delivery_status: "none" });
+                if (table_search_result_columns_els?.length > 0) {
+                    const commonIndex = source_html_name == 'delivery' ? 1 : 3
+
+                    const freightProps: { [key: string]: string } = {
+                        tracking_code: table_search_result_columns_els[commonIndex].querySelector('.text-nowrap')?.firstChild.textContent,
+                        delivery_status_tracklink: table_search_result_columns_els[commonIndex].querySelector('a.agree')?.getAttribute('href'),
+                        date_added: table_search_result_columns_els[commonIndex == 1 ? commonIndex + 2 : commonIndex + 7].textContent,
+                        total_weight: table_search_result_columns_els[commonIndex == 1 ? commonIndex + 5 : commonIndex + 4].textContent,
+                        total_price: table_search_result_columns_els[commonIndex == 1 ? commonIndex + 7 : commonIndex + 5].textContent,
+                        delivery_status: table_search_result_columns_els[commonIndex + 6].querySelector('span.order_status')?.textContent ||
+                            table_search_result_columns_els[commonIndex + 6].querySelector('span#order_product_status')?.textContent
+                    }
+
+                    const restructured_objs = Object.fromEntries(
+                        (Object.entries(freightProps) as [string, string][])
+                            // Trimming and replace newline
+                            .map(([key, value]) => [key, typeof (value) === 'string' ? value.trim().replace(/\n/g, '') : null])
+                            // Filter out undefined/null/empty value
+                            .filter(([, value]) => value && value !== '')
+                    ) as { [key: string]: string };
+
+                    if (source_html_name !== 'delivery') {
+                        //If the current iteration of arrived/otw html have the same current processing expressId
+                        //can return straight
+                        if (freightProps?.tracking_code === buyertrade_tracking_info?.expressId) {
+                            db_data.freight_delivery_data = db_data?.freight_otw_arrive_data || restructured_objs;
+                        } else {
+                            resp.freight_otw_arrive_data = restructured_objs;
+                        }
+                    } else if (source_html_name === 'delivery') {
+                        if (freight_otw_arrive_data && freight_otw_arrive_data?.tracking_code === buyertrade_tracking_info?.expressId) {
+                            db_data.freight_delivery_data = freight_otw_arrive_data
+                        } else
+                            db_data.freight_delivery_data = restructured_objs;
+                    }
+                } else if (text_search_result_el === "You have not made any previous orders!") {
+                    db_data.freight_delivery_data = Object.assign({}, db_data.freight_delivery_data, { delivery_status: "none" });
+
+                } else if (!text_search_result_el && !table_search_result_columns_els && source_html_name !== 'delivery') {
+                    process_html(delivery_html, 'delivery')
+                }
             }
 
             // postMessage persist message on each call, need manual cleaning
             delete resp.freight_html;
             delete resp.msg_action; // Fixes bug where previous msg_action obj stuck with a new chromeapi postmessage call
 
-            port.postMessage({ msg_action: 'save_db', ...resp })
+            port.postMessage({ msg_action: 'save_db', db_data })
+            console.log({ ...db_data })
             break;
         default:
     }
@@ -89,13 +124,16 @@ port.onMessage.addListener(async (resp) => {
 
 
 (async () => {
+    let first_query = true;
+
     if (location.href.includes("https://buyertrade.taobao.com/")) {
         const buyerTradeDivToObserve = 'td[class*="bought-wrapper-mod__thead-operations-container"]'
 
         // This is rightmost wrapper for flag, delete / threadoperations list on buyertrade page
         const bought_threadop_wrapper_els = Array.from(document.querySelectorAll(buyerTradeDivToObserve))
+        const elementsArray = Array.from(bought_threadop_wrapper_els).slice(0, 20) as Element[];
 
-        for (const bought_threadop_wrapper_el of bought_threadop_wrapper_els.slice(0, 15) as Element[]) {
+        for (const bought_threadop_wrapper_el of elementsArray) {
 
             // Need to do this as there's no className or Id or even attrib to capture the wrapper
             // Do not use querySelector as it will only find children and not ancestor
@@ -121,15 +159,15 @@ port.onMessage.addListener(async (resp) => {
             const product_create_date = upper_row_buyertrade_wrapper_el.querySelector("span[class^='bought-wrapper-mod__create-time']")?.textContent
 
             if (is_tracking_el_exists) {
-                const tracking_info = await new Promise<TrackingInfo>((resolve) => {
-                    chrome.runtime.sendMessage({ action: "get_tracking_code", orderId }, (tracking_info) => {
-                        resolve(tracking_info);
+                const buyertrade_tracking_info = await new Promise<TrackingInfo>((resolve) => {
+                    chrome.runtime.sendMessage({ msg_action: "get_buyertrade_tracking_code", orderId }, (buyertrade_tracking_info) => {
+                        resolve(buyertrade_tracking_info);
                     });
                 });
 
-                if (!tracking_info) continue;
+                if (!buyertrade_tracking_info) continue;
 
-                createBuyerTradeButton(bought_threadop_wrapper_el as HTMLElement, handleButtonClick)
+                createBuyerTradeButton(bought_threadop_wrapper_el as HTMLElement)
 
                 const db_data: BuyerTradeData = {
                     orderId,
@@ -140,11 +178,16 @@ port.onMessage.addListener(async (resp) => {
                     product_web_link,
                     product_image_url,
                     product_create_date,
-                    tracking_info
+                    buyertrade_tracking_info,
                 }
 
-                port.postMessage({ msg_action: 'is_freight_processed', ...db_data })
-
+                /**
+                 * setting the template for reusable and non reusable object
+                 * reusable is usually db_data
+                 * non reusable are just like state, and not for permanent store to db
+                 */
+                port.postMessage({ msg_action: 'is_freight_processed', db_data, first_query } as PostMessageData)
+                first_query = false;
             }
 
         }
@@ -154,9 +197,3 @@ port.onMessage.addListener(async (resp) => {
     }
 
 })()
-
-interface TrackingInfo {
-    expressId: string;
-    expressName: string;
-    // Add other properties if necessary
-}

@@ -5,7 +5,7 @@ import { taoDownloader } from "../taoDownloader/taoDownloadInjected";
 import { priceBoxRenderer } from "../components/renderer/priceBoxRenderer";
 import { PriceBox } from "../components/priceBoxComponent";
 import ButtonRenderer from "../components/renderer/taoButtonRenderer";
-const { findChildThenParentElbyClassName } = new DOMTools;
+const { findChildThenParentElbyClassName } = DOMTools;
 
 // Create an instance of the CurrencyAPI class
 const currencyApi = new CurrencyAPI
@@ -287,7 +287,9 @@ if (location.href.includes("https://item.taobao.com/")) {
             new_button_wrapper.className = 'tao_convert_download_button';
 
             render(
-                <ButtonRenderer buttonWrapperClasses="inline-flex float-end"
+                <ButtonRenderer
+                    buttonTwindClasses="taoconv_button bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
+                    buttonWrapperClasses="inline-flex float-end"
                     containerElement={new_button_wrapper}
                     onClickHandler={taoDownloader}
                     buttonName='taoDownloader'

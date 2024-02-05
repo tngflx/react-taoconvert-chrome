@@ -4,13 +4,12 @@ import { useImpProdContext } from "../../tabs/impProdContextProvider";
 interface CircularButtonProps {
     icon: string;
     bgColor: string;
-    hoverBgColor: string;
     orderId: any;
     isMinus?: boolean;  // Make isMinus optional
     onClick?: (orderId: any) => void;
 }
 
-export const CircularButton: React.FC<any> = ({ onClick, icon, bgColor, hoverBgColor, orderId, isMinus }) => {
+export const CircularButton: React.FC<CircularButtonProps> = ({ onClick, icon, bgColor, orderId, isMinus }) => {
     const { fetchDB } = useImpProdContext()
 
     const colors = {
@@ -20,7 +19,6 @@ export const CircularButton: React.FC<any> = ({ onClick, icon, bgColor, hoverBgC
     };
 
     const handleMinusClick = () => {
-        console.log(orderId);
         idb.remove(orderId);
         fetchDB()
     };

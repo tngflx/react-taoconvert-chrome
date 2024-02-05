@@ -2,7 +2,7 @@ import { render } from "react-dom";
 import { DOMTools } from "../../utils/misc";
 import { PriceBox } from "../priceBoxComponent";
 
-const { findChildThenParentElbyClassName } = new DOMTools;
+const { findChildThenParentElbyClassName } = DOMTools;
 export class priceBoxRenderer {
     public currency_change: string
     public currency_rate: number
