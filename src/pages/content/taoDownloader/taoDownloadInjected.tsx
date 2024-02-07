@@ -1,9 +1,10 @@
 import { render } from "react-dom";
 import ButtonRenderer from "../components/renderer/taoButtonRenderer";
 import { DOMTools, MutationObserverManager } from "../utils/misc";
-import { comment } from "postcss";
+import RadixRenderer from "../components/renderer/radixUIRenderer";
+import DropDownImageDownload from "../components/radixUI";
 const mutObserverManager = new MutationObserverManager();
-const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
+
 export async function taoDownloader() {
     const all_sku_items = document.querySelectorAll('div.skuItemWrapper .skuItem')
     const h5api_data: { data: any } = await new Promise((resolve) => {
@@ -36,7 +37,7 @@ export async function taoDownloader() {
             })
         };
 
-        resolve({data: 'ds'})
+        resolve({ data: 'ds' })
         //chrome.runtime.sendMessage({ msg_action: 'get_itempage_products', url_param_data }, h5api_data => {
         //    resolve(h5api_data)
         //})
@@ -116,21 +117,12 @@ function createImagePlusButton(comment_album_el) {
     const button_container = document.createElement('div');
     button_container.classList.add('tao_convert_button');
 
-    comment_album_el.insertAdjacentElement('afterend', button_container)
+    comment_album_el.insertAdjacentElement('beforebegin', button_container)
 
-    function onClickHandler() {
-
-    }
-
-    // Render the BuyerTradeButtonWrapper component and pass the button_wrapper as a prop
     render(
-        <ButtonRenderer
-            onClickHandler={onClickHandler}
-            containerElement={button_container}
-            buttonWrapperClasses="float-left inline-flex mx-4"
-            buttonName="taoImport"
-            buttonTwindClasses="taoconv_button bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
-        />,
+        <RadixRenderer shadowRootContainer={button_container}>
+            <DropDownImageDownload />
+        </RadixRenderer>,
         button_container
     );
 }

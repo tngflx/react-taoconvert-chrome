@@ -61,6 +61,7 @@ export default defineConfig({
                 priceConvStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
                 buyerTrade: resolve(pagesDir, 'content', 'buyerTradePage', 'index.ts'),
                 tailwindStyle: resolve(srcDir, 'assets', 'style', 'tailwind.css'),
+                radixStyle: resolve(srcDir, 'assets', 'style', 'radixUI.css'),
                 freightPage: resolve(pagesDir, 'content', 'freightPage', 'index.ts'),
                 background: resolve(pagesDir, 'background', 'index.ts'),
                 popup: resolve(pagesDir, 'popup', 'index.html')

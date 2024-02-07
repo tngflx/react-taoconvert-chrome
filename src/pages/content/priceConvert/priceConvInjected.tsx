@@ -5,6 +5,9 @@ import { taoDownloader } from "../taoDownloader/taoDownloadInjected";
 import { priceBoxRenderer } from "../components/renderer/priceBoxRenderer";
 import { PriceBox } from "../components/priceBoxComponent";
 import ButtonRenderer from "../components/renderer/taoButtonRenderer";
+import ImageGalleryDialog from "../components/imageGalleryDialog";
+import RadixRenderer from "../components/renderer/radixUIRenderer";
+import { useRef } from "react";
 const { findChildThenParentElbyClassName } = DOMTools;
 
 // Create an instance of the CurrencyAPI class
@@ -285,15 +288,15 @@ if (location.href.includes("https://item.taobao.com/")) {
 
             const new_button_wrapper = document.createElement('div');
             new_button_wrapper.className = 'tao_convert_download_button';
+            const portalShadowDomRef = useRef(null);
 
             render(
-                <ButtonRenderer
-                    buttonTwindClasses="taoconv_button bg-green-500 hover:bg-green-300 text-black font-bold py-2 px-3 rounded items-center"
-                    buttonWrapperClasses="inline-flex float-end"
-                    containerElement={new_button_wrapper}
-                    onClickHandler={taoDownloader}
-                    buttonName='taoDownloader'
-                />
+                <RadixRenderer
+                    shadowRootContainer={new_button_wrapper}
+                    targetShadowDom={portalShadowDomRef.current}
+                >
+                    <ImageGalleryDialog ref={portalShadowDomRef} />
+                </RadixRenderer>
                 , new_button_wrapper);
             item_header_el.appendChild(new_button_wrapper);
             ran_before = true;
