@@ -59,19 +59,23 @@ export class DOMTools {
      * @param {Boolean} is_return_element flag to return element or boolean
      * @returns {Boolean | Element} return either boolean or Element
      */
-    static checkNodeExistsInChildEl = (src_element: Element, class_or_id: string, is_return_element?: boolean): Element | boolean => {
-        if (src_element.className && typeof src_element.className === 'string' && src_element.className.includes(class_or_id)) {
-            return is_return_element ? src_element : true;
-        }
 
-        if (src_element.id && src_element.id === class_or_id) {
+    static checkNodeExistsInChildEl(options: { src_element: Element, target_class_or_id: string, tag_name?: string, is_return_element?: boolean }): Element | boolean {
+        const { src_element, target_class_or_id, tag_name, is_return_element } = options;
+
+        const notEmptyTargClassId = target_class_or_id.length > 0 ? true : false;
+        const hasMatchingClass = src_element.className && typeof src_element.className === 'string' && notEmptyTargClassId && src_element.className.includes(target_class_or_id);
+        const hasMatchingTag = src_element.tagName.toLowerCase() === (tag_name || '').toLowerCase();
+        const hasMatchingId = src_element.id && notEmptyTargClassId && src_element.id === target_class_or_id;
+
+        if (hasMatchingClass || hasMatchingTag || hasMatchingId) {
             return is_return_element ? src_element : true;
         }
 
         if (src_element.childNodes.length > 0) {
             for (const child of Array.from(src_element.childNodes)) {
                 if (child.nodeType === 1) {
-                    const result = this.checkNodeExistsInChildEl(child as Element, class_or_id, is_return_element);
+                    const result = this.checkNodeExistsInChildEl({ src_element: child as Element, target_class_or_id, tag_name, is_return_element });
                     if (result === true || (is_return_element && result)) {
                         return result;
                     }
@@ -86,15 +90,15 @@ export class DOMTools {
      * check if text already inserted on mutation by main DOM
      * this method is tailored for mutationLists iteration
      * @param {Element} src_element source element/ parent node that contains the child to search for
-     * @param {string} class_or_id string of the classname or id name for search target
+     * @param {string} target_class_or_id string of the classname or id name for search target
      * @param {Boolean} is_return_element flag to return true/ false
      * @returns {Boolean}
      */
-    static checkTextInsertedInParentEl = (src_element: Element, class_or_id: string): boolean => {
+    static checkTextInsertedInParentEl = (src_element: Element, target_class_or_id: string): boolean => {
         //nodeType 3 is text, when textContent is not empty
         // which means text exists, then return true
         if (src_element.nodeType == 3 && src_element.textContent !== '') {
-            if (src_element?.parentElement && src_element.parentElement.className.includes(class_or_id)) {
+            if (src_element?.parentElement && src_element.parentElement.className.includes(target_class_or_id)) {
                 return true
             }
         }
@@ -103,7 +107,7 @@ export class DOMTools {
         // which has multiple comments first before putting new text
         // This is to capture the moment when comment is added, presume text is added on that time
         if (src_element.nodeType == 8 && src_element.nodeName == '#comment') {
-            if (src_element?.previousElementSibling && src_element.previousElementSibling?.className?.includes(class_or_id)) {
+            if (src_element?.previousElementSibling && src_element.previousElementSibling?.className?.includes(target_class_or_id)) {
                 return true
             }
         }
@@ -118,7 +122,7 @@ export class MutationObserverManager extends DOMTools {
 
     errorCodes: Record<string, string>;
     config: {
-        mode: 'addedNode' | 'removedNode' | 'addedText';
+        mode: 'addedNode' | 'removedNode' | 'addedText' | 'addedAttrib';
         /**
          * The mutated target child node of domLoadedSourceParentNode.
          * the selector doesn't need to be in [class^=''] format
@@ -133,7 +137,7 @@ export class MutationObserverManager extends DOMTools {
          * preferably you find the unchangeable ancestor existed first on loading the web
          * @type {string}
          */
-        domLoadedSourceParentNode: GenericSelector | string;
+        domLoadedSourceParentNode: GenericSelector | string | Node
         subtree: boolean
     };
     foundTargetNode: boolean;
@@ -154,13 +158,19 @@ export class MutationObserverManager extends DOMTools {
     startObserver(callback) {
         const { mode, mutTargetChildName, domLoadedSourceParentNode, subtree } = this.config;
 
-        let targetElement = document.querySelector(domLoadedSourceParentNode)
+        let targetElement;
+        if (typeof domLoadedSourceParentNode == 'object') {
+            targetElement = domLoadedSourceParentNode
+        } else {
+            targetElement = document.querySelector(domLoadedSourceParentNode)
+        }
+
         if (targetElement) {
             this.mutatedTargetParentNode = targetElement
             this.subtree = subtree
         } else {
             // Not to throw error here as mutationObserver can still observe unloaded elements
-            throw MutObsError.elementNotFound(domLoadedSourceParentNode);
+            throw MutObsError.elementNotFound(domLoadedSourceParentNode as string);
         }
 
         console.log(`mutate.startObserver srcParent: ${domLoadedSourceParentNode}, mode: ${mode}, mutatedChild: ${mutTargetChildName}`)
@@ -173,10 +183,9 @@ export class MutationObserverManager extends DOMTools {
             switch (mode) {
                 case 'addedNode':
                     this.foundTargetNode = mutationsList.some(mutation => {
-
                         if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                             return Array.from(mutation.addedNodes).some(node =>
-                                MutationObserverManager.checkNodeExistsInChildEl(node as Element, mutTargetChildName)
+                                MutationObserverManager.checkNodeExistsInChildEl({ src_element: node as Element, target_class_or_id: mutTargetChildName })
                             );
                         }
                         return false;
@@ -189,7 +198,7 @@ export class MutationObserverManager extends DOMTools {
                     this.foundTargetNode = mutationsList.some(mutation =>
                         mutation.type === 'childList' &&
                         Array.from(mutation.removedNodes).some(node =>
-                            MutationObserverManager.checkNodeExistsInChildEl(node as Element, mutTargetChildName)
+                            MutationObserverManager.checkNodeExistsInChildEl({ src_element: node as Element, target_class_or_id: mutTargetChildName })
 
                         )
                     );
@@ -206,6 +215,15 @@ export class MutationObserverManager extends DOMTools {
                     );
 
                     this.stopObserverBeforeDomChanges(observer, callback)
+                    break;
+                case 'addedAttrib':
+                    this.foundTargetNode = mutationsList.some(mutation => {
+                        console.log(mutation.type, mutation.addedNodes)
+                        return mutation.type === 'childList' &&
+                            Array.from(mutation.addedNodes).some(node =>
+                                MutationObserverManager.checkNodeExistsInChildEl({ src_element: node as Element, target_class_or_id: '', tag_name: mutTargetChildName })
+                            )
+                    });
                     break;
                 default:
                     throw MutObsError.noSpecifiedCase()

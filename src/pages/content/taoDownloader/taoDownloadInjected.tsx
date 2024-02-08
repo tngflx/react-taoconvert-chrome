@@ -3,6 +3,7 @@ import ButtonRenderer from "../components/renderer/taoButtonRenderer";
 import { DOMTools, MutationObserverManager } from "../utils/misc";
 import RadixRenderer from "../components/renderer/radixUIRenderer";
 import DropDownImageDownload from "../components/radixUI";
+import { useState, useEffect } from "react";
 const mutObserverManager = new MutationObserverManager();
 
 export async function taoDownloader() {
@@ -94,6 +95,7 @@ export async function taoDownloader() {
     reviewTabScrape()
 }
 
+let flat_comment_photos;
 function reviewTabScrape() {
     let commentTabToObserve = 'div[class^="Tabs--root"] [class^="Tabs--container"]';
 
@@ -104,25 +106,58 @@ function reviewTabScrape() {
     review_with_pic_orvid.click()
 
 
-    mutObserverManager.config = { mode: 'addedNode', mutTargetChildName: 'Comment--album', domLoadedSourceParentNode: commentTabToObserve, subtree: true }
+    mutObserverManager.config = { mode: 'addedNode', mutTargetChildName: 'Comment--root', domLoadedSourceParentNode: commentTabToObserve, subtree: true }
     mutObserverManager.startObserver(() => {
         const comment_album_els = review_tab_container.querySelectorAll('div[class^="Comment--album"]')
-        Array.from(comment_album_els).forEach(photo => {
-            createImagePlusButton(photo)
-        })
+
+        const remapped_comment_photos = Array.from(comment_album_els).map((album, key) => {
+            const comment_photos_els = album.querySelectorAll('div[class^="Comment--photo"] img')
+
+            for (const [index, comment_photo_el] of comment_photos_els.entries()) {
+                const imgAttrib = comment_photo_el.getAttribute('src')
+
+                if (index == 0) {
+                    console.log(comment_photo_el)
+                    mutObserverManager.config = { mode: 'addedAttrib', mutTargetChildName: 'img', domLoadedSourceParentNode: comment_photo_el.parentNode, subtree: true }
+                    mutObserverManager.startObserver(() => {
+                        console.log('attribute changes??')
+                        //if (imgAttrib == 'https://gw.alicdn.com/imgextra/i4/O1CN01CYtPWu1MUBqQAUK9D_!!6000000001437-2-tps-2-2.png') return;
+                        //({
+                        //    src: `https:${imgAttrib}`,
+                        //    key: key
+                        //})
+                    })
+
+                }
+            }
+        });
+
+        flat_comment_photos = remapped_comment_photos.flat()
+
     })
 }
 
-function createImagePlusButton(comment_album_el) {
-    const button_container = document.createElement('div');
-    button_container.classList.add('tao_convert_button');
+export const ImageTiles = () => {
+    const [flatCommentPhotos, setFlatCommentPhotos] = useState([]);
 
-    comment_album_el.insertAdjacentElement('beforebegin', button_container)
+    useEffect(() => {
 
-    render(
-        <RadixRenderer shadowRootContainer={button_container}>
-            <DropDownImageDownload />
-        </RadixRenderer>,
-        button_container
+        // Update state when flat_comment_photos changes
+        setFlatCommentPhotos(flat_comment_photos || []);
+    }, [flat_comment_photos]);
+
+    return (
+        <div className="grid grid-cols-8 gap-4 mt-4">
+            {flatCommentPhotos.map((image, index) => (
+                <div key={index} className="col-span-8 flex items-center justify-center">
+                    <img
+                        src={image.src}
+                        alt={`Image ${index + 1}`}
+                        className="w-full h-[100px] object-cover rounded-md mr-2"
+                    />
+                    <p className="text-sm">{`Description for Image ${index + 1}`}</p>
+                </div>
+            ))}
+        </div>
     );
-}
+};

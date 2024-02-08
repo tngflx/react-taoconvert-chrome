@@ -285,20 +285,32 @@ if (location.href.includes("https://item.taobao.com/")) {
     function createDownloadListsButton() {
         if (ran_before === false) {
             const item_header_el = document.querySelector('[class^="ItemHeader--subTitle"]')
+            const root_dom = document.querySelector('#root')
 
             const new_button_wrapper = document.createElement('div');
             new_button_wrapper.className = 'tao_convert_download_button';
-            const portalShadowDomRef = useRef(null);
+
+            const new_modal_wrapper = document.createElement('div');
+            new_modal_wrapper.className = 'taomodal_image_gallery_wrapper';
+            Object.assign(new_modal_wrapper.style, {
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                zIndex: '9999999',
+            });
+
+
+            item_header_el.appendChild(new_button_wrapper);
+            root_dom.appendChild(new_modal_wrapper);
 
             render(
-                <RadixRenderer
-                    shadowRootContainer={new_button_wrapper}
-                    targetShadowDom={portalShadowDomRef.current}
-                >
-                    <ImageGalleryDialog ref={portalShadowDomRef} />
-                </RadixRenderer>
+                <ImageGalleryDialog onClick={taoDownloader}
+                    shadowRootButton={new_button_wrapper}
+                    shadowRootModal={new_modal_wrapper}
+                />
                 , new_button_wrapper);
-            item_header_el.appendChild(new_button_wrapper);
+
+
             ran_before = true;
         }
     }

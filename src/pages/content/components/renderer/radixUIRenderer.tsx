@@ -1,64 +1,61 @@
 import React, { useRef, useEffect } from 'react';
 import { render } from 'react-dom';
 import { Button, Theme } from '@radix-ui/themes';
-   
-const RadixRenderer = ({ shadowRootContainer, children, targetShadowDom }) => {
-    const radixRef = useRef(null);
+import { forwardRef } from 'react';
 
-    useEffect(() => {
-        const shadowRoot = shadowRootContainer.attachShadow({ mode: 'open' });
-        const cssModules = [
-            'assets/css/tailwindStyle.chunk.css',
-            'assets/css/radixStyle.chunk.css'
-        ];
+interface RadixRendererProps {
+    shadowRootContainer: any;
+    children?: React.ReactNode;
+}
 
-        const fetchData = async () => {
-            try {
+const RadixRenderer = forwardRef<HTMLDivElement, RadixRendererProps>(
+    ({ shadowRootContainer, children }, radixRef) => {
 
-                const responses = await Promise.all(cssModules.map(async file => {
-                    const response = await fetch(chrome.runtime.getURL(file));
-                    return response.text();
-                }));
+        useEffect(() => {
+            const shadowRoot = shadowRootContainer.attachShadow({ mode: 'open' });
+            const cssModules = [
+                'assets/css/tailwindStyle.chunk.css',
+                'assets/css/radixStyle.chunk.css'
+            ];
 
-                const styleSheets = responses.map(style => {
-                    const newStyleSheet = new CSSStyleSheet();
-                    newStyleSheet.replace(style);
-                    return newStyleSheet;
-                });
+            const fetchData = async () => {
+                try {
+                    const responses = await Promise.all(cssModules.map(async file => {
+                        const response = await fetch(chrome.runtime.getURL(file));
+                        return response.text();
+                    }));
 
-                shadowRoot.adoptedStyleSheets = styleSheets;
+                    const styleSheets = responses.map(style => {
+                        const newStyleSheet = new CSSStyleSheet();
+                        newStyleSheet.replace(style);
+                        return newStyleSheet;
+                    });
 
-                if (targetShadowDom) {
-                    console.log(targetShadowDom)
-                    targetShadowDom.adoptedStyleSheets = styleSheets;
+                    shadowRoot.adoptedStyleSheets = styleSheets;
+
+                } catch (error) {
+                    console.error('Error getting css files:', error);
                 }
+            };
 
-            } catch (error) {
-                console.error('Error getting css files:', error);
-            }
-        };
+            fetchData();
 
-        fetchData();
+            render(
+                <Theme ref={radixRef}
+                    accentColor="indigo"
+                    grayColor="slate"
+                    panelBackground="solid"
+                    scaling="100%"
+                    radius="full">
+                    {children}
+                </Theme>
+                , shadowRoot
+            );
 
-        // Can't directly return buttonElement because we still need to do dom manipulation on this button
-        // The only way is to useEffect hook to do dom manipulation before render
-        render(
+        }, [shadowRootContainer]);
 
-            <Theme ref={radixRef}
-                accentColor="indigo"
-                grayColor="slate"
-                panelBackground="solid"
-                scaling="100%"
-                radius="full">
-                {children}
-            </Theme>
-            , shadowRoot
-        );
-
-    }, [shadowRootContainer]);
-
-    // Return an empty div as a placeholder for the component
-    return <div ref={radixRef}></div>;
-};
+        return <div ref={radixRef}></div>;
+    }
+);
 
 export default RadixRenderer;
