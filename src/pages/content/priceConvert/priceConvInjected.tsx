@@ -308,7 +308,8 @@ if (location.href.includes("https://item.taobao.com/")) {
                     shadowRootButton={new_button_wrapper}
                     shadowRootModal={new_modal_wrapper}
                 />
-                , new_button_wrapper);
+                , new_button_wrapper
+            );
 
 
             ran_before = true;

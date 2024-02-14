@@ -65,8 +65,8 @@ export class DOMTools {
 
         const notEmptyTargClassId = target_class_or_id.length > 0 ? true : false;
         const hasMatchingClass = src_element.className && typeof src_element.className === 'string' && notEmptyTargClassId && src_element.className.includes(target_class_or_id);
-        const hasMatchingTag = src_element.tagName.toLowerCase() === (tag_name || '').toLowerCase();
-        const hasMatchingId = src_element.id && notEmptyTargClassId && src_element.id === target_class_or_id;
+        const hasMatchingTag = src_element?.tagName?.toLowerCase() === (tag_name || '')?.toLowerCase();
+        const hasMatchingId = src_element?.id && notEmptyTargClassId && src_element?.id === target_class_or_id;
 
         if (hasMatchingClass || hasMatchingTag || hasMatchingId) {
             return is_return_element ? src_element : true;
@@ -218,7 +218,7 @@ export class MutationObserverManager extends DOMTools {
                     break;
                 case 'addedAttrib':
                     this.foundTargetNode = mutationsList.some(mutation => {
-                        console.log(mutation.type, mutation.addedNodes)
+                        console.log(mutation.type, mutation)
                         return mutation.type === 'childList' &&
                             Array.from(mutation.addedNodes).some(node =>
                                 MutationObserverManager.checkNodeExistsInChildEl({ src_element: node as Element, target_class_or_id: '', tag_name: mutTargetChildName })

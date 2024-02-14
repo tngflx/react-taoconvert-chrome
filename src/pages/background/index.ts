@@ -56,8 +56,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             });
             break;
 
-        case 'get_itempage_products':
-            //e.__processRequestMethod, e.__processRequestType, e.__processToken, e.__processRequestUrl, e.middlewares, e.__processRequest, c]
+        case 'get_itempage_products': {
             const { url_param_data } = request;
 
             chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
@@ -69,11 +68,13 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                         sendResponse(e)
                     })
             });
-
             break;
+        }
 
-        case 'get_itempage_reviews':
-            const data = { "itemId": "729987628948", "bizCode": "ali.china.tmall", "channel": "pc_detail", "pageSize": 20, "pageNum": 1 }
+        case 'get_itempage_reviews': {
+
+            const { url_param_data } = request;
+
             chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
                 const _queryBuilder = new queryBuilder(cookies, url_param_data)
                 _queryBuilder.fetchTaoReviewPage()
@@ -84,6 +85,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     })
             });
             break;
+        }
 
         default:
     }

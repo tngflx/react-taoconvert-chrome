@@ -5,7 +5,7 @@ interface fetchOptions {
 export class queryBuilder extends h5Encryption {
     cookies: any
     url_param_data: any
-    params: { jsv: string; appKey: string; t: number; api: string; v: string; isSec: string; ecode: string; timeout: string; ttid: string; AntiFlood: string; AntiCreep: string; dataType: string; valueType: string; preventFallback: string; type: string; data: string; };
+    params: { jsv: string; appKey: string; t: number; v: string; isSec: string; ecode: string; timeout: string; ttid: string; AntiFlood: string; AntiCreep: string; dataType: string; valueType: string; preventFallback: string; type: string; data: string; };
     h5_tk_cookies_string: any;
     fetchOptions: Object;
     constructor(cookies, url_param_data) {
@@ -18,7 +18,6 @@ export class queryBuilder extends h5Encryption {
             jsv: '2.6.1',
             appKey: '12574478',
             t: (new Date).getTime(),
-            api: 'mtop.taobao.pcdetail.data.get',
             v: '1.0',
             isSec: '0',
             ecode: '0',
@@ -49,7 +48,7 @@ export class queryBuilder extends h5Encryption {
     createFetch() {
         const queryString = this.processQueryString()
 
-        const url = `https://h5api.m.taobao.com/h5/mtop.taobao.pcdetail.data.get/1.0/?${queryString}`;
+        const url = `https://h5api.m.taobao.com/h5/${this.params['api']}/1.0/?${queryString}`;
         this.fetchOptions = {
             headers: {
                 "accept-language": "en;q=0.5",
@@ -76,6 +75,8 @@ export class queryBuilder extends h5Encryption {
     fetchTaoItemPage() {
 
         this.params['sign'] = this.signH5ItemPageReq()
+        this.params['api'] = 'mtop.taobao.pcdetail.data.get'
+
         return this.createFetch()
     }
 
@@ -85,7 +86,6 @@ export class queryBuilder extends h5Encryption {
         this.params['sign'] = this.signH5ReviewReq()
 
         return this.createFetch()
-
 
     }
 
