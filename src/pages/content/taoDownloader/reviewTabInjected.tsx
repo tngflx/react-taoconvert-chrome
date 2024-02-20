@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useReducer } from "react"
 import useStorage from "../../../shared/hooks/useStorage";
 import dataStore from "../../../shared/storages/reviewItemSkuBase";
 import { convertImageUrl } from "../utils/imageResize";
@@ -17,7 +17,7 @@ export async function processReviewTab() {
     const { data: { module: { reviewVOList } } } = h5api_review_data;
 
     const remapped_review_data = reviewVOList
-        .map(review => {
+        ?.map(review => {
             const { reviewAppendVO } = review;
             const revPicPathList = review.reviewPicPathList || (reviewAppendVO?.reviewPicPathList || []);
 
@@ -44,8 +44,28 @@ export async function processReviewTab() {
     return remapped_review_data
 }
 
+// Action Types
+const TOGGLE_SELECTION = "TOGGLE_SELECTION";
+const CLEAR_SELECTION = "CLEAR_SELECTION";
+
+// Reducer function
+const selectionReducer = (state, action) => {
+    switch (action.type) {
+        case TOGGLE_SELECTION:
+            const isSelected = state.includes(action.payload);
+            return isSelected
+                ? state.filter((src) => src !== action.payload)
+                : [...state, action.payload];
+        case CLEAR_SELECTION:
+            return [];
+        default:
+            return state;
+    }
+};
+
 export const ImageTiles = ({ isLoading }) => {
     const data = useStorage(dataStore);
+    const [selectedImages, dispatch] = useReducer(selectionReducer, []);
 
     useEffect(() => {
         isLoading = true;
@@ -54,28 +74,68 @@ export const ImageTiles = ({ isLoading }) => {
             isLoading = false;
     }, []);
 
+    const handleImageClick = (imageSrc) => {
+        dispatch({ type: TOGGLE_SELECTION, payload: imageSrc });
+    };
+
+    const handleClearSelection = () => {
+        dispatch({ type: CLEAR_SELECTION });
+    };
+
     return (
         <div className="grid grid-cols-8 gap-4 mt-4">
-            {data.remappedReviewData.map(({ revPicPathList, skuText }, parentIndex) => (
-                <div key={parentIndex} className="col-span-4 flex flex-col items-center justify-center">
-                    <div className="col-span-2 grid grid-cols-2 gap-2">
+            {data.remappedReviewData.map(({ revPicPathList, skuText }: { revPicPathList: string[], skuText: string }, parentIndex: number) => (
+                <div key={parentIndex} className="col-span-2 flex flex-col items-center justify-center">
+                    <div className="grid grid-cols-2 gap-3">
                         {revPicPathList.map((link, childIndex) => (
                             <React.Fragment key={childIndex}>
-                                <img
-                                    src={convertImageUrl(link, 100, 90)}
-                                    alt={`Image ${parentIndex + 1}.${childIndex + 1}`}
-                                    className="w-full h-[100px] object-cover rounded-md mb-2"
-                                />
+                                <div className="relative">
+                                    <img
+                                        src={convertImageUrl(link, 450, 90)}
+                                        alt={`Image ${parentIndex + 1}.${childIndex + 1}`}
+                                        className="w-full h-[200px] object-cover rounded-md mb-2 hover:scale-120 transition-transform duration-300 cursor-pointer"
+                                        onClick={() => handleImageClick(link)}
+                                    />
+                                    {selectedImages.includes(link) && (
+                                        <div className="absolute top-0 left-0 p-2">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                className="h-6 w-6 text-green-500"
+                                                onClick={() => handleImageClick(link)}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                        </div>
+                                    )}
+                                </div>
                             </React.Fragment>
                         ))}
                     </div>
                     <p className="text-sm mt-2 text-center">skuText</p>
                 </div>
             ))}
+            {selectedImages.length > 0 && (
+                <div className="col-span-8 mt-4">
+                    <button
+                        className="bg-green-500 text-white px-4 py-2 rounded"
+                        onClick={handleClearSelection}
+                    >
+                        Clear Selection
+                    </button>
+                </div>
+            )}
         </div>
     );
-
-}
+};
 
 let flat_comment_photos;
 function reviewTabScrape() {

@@ -1,12 +1,12 @@
-export function convertImageUrl(originalUrl, width, quality) {
+export function convertImageUrl(originalUrl: string, width: number, quality: number): string {
     // Extract the file extension from the original URL
     const fileExtension = originalUrl.split('.').pop();
 
-    // Extract the part of the URL before the file extension
-    const baseUrl = originalUrl.replace(`.${fileExtension}`, '');
+    // Replace the domain with 'gw.alicdn.com'
+    const newUrl = originalUrl.replace(/\/\/img\.alicdn\.com/, '//gw.alicdn.com');
 
     // Construct the new URL with resizing and compression parameters
-    const newUrl = `https:${baseUrl}_${width}x10000q${quality}.${fileExtension}_.webp`;
+    const finalUrl = `https:${newUrl}_${width}x10000q${quality}.jpg_.webp`;
 
-    return newUrl;
+    return finalUrl;
 }
