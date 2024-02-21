@@ -1,26 +1,24 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { Cross2Icon } from '@radix-ui/react-icons';
-import { forwardRef, useState } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import RadixRenderer from './renderer/radixUIRenderer';
 import { ImageTiles } from '../taoDownloader/reviewTabInjected';
+import useStorage from '../../../shared/hooks/useStorage';
+import { loadState } from '../../../shared/storages/reviewItemSkuBase';
 
 type ImageGalleryDialogProps = {};
 
 const ImageGalleryDialogTemplate = ({ shadowRootModal, onClick }) => {
     const [container, setContainer] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [isDialogOpen, setDialogOpen] = useState(false);
+    let isLoading = useStorage(loadState)
 
-    function handleLoading(isLoading) {
-        setLoading(isLoading)
-        setDialogOpen(!isLoading)
-    } 
+    console.log(isLoading)
     return (
         <>
             <Dialog.Root>
-                <Dialog.Trigger asChild onClick={onClick} disabled={loading}>
+                <Dialog.Trigger asChild onClick={onClick}>
                     <button className="text-violet11 inline-flex float-end shadow-blackA4 hover:bg-mauve3 inline-flex h-[35px] items-center justify-center rounded-[4px] bg-green-500 px-[15px] font-medium leading-none shadow-[0_2px_10px] focus:shadow-[0_0_0_2px] focus:shadow-black focus:outline-none">
-                        {loading ? (
+                        {isLoading ? (
                             <div className="flex items-center">
                                 <div className="spinner-border text-white h-5 w-5 mr-2" role="status">
                                     <span className="sr-only">Loading...</span>
@@ -32,14 +30,14 @@ const ImageGalleryDialogTemplate = ({ shadowRootModal, onClick }) => {
                         )}
                     </button>
                 </Dialog.Trigger>
-                <Dialog.Overlay className="bg-blackA6 data-[state=open]:animate-overlayShow fixed inset-0 place-items-center " />
+                <Dialog.Overlay className="grid bg-blackA6 data-[state=open]:animate-overlayShow fixed inset-0 place-items-center " />
                 <Dialog.Portal container={container}>
                     <Dialog.Content
                         className="overflow-y-auto data-[state=open]:animate-contentShow fixed top-[50%] left-[50%] max-h-[90vh] min-w-[800px] max-w-[1400px] translate-x-[-50%] translate-y-[-50%] rounded-[6px] bg-white p-[15px] shadow-[hsl(206_22%_7%_/_35%)_0px_10px_38px_-10px,_hsl(206_22%_7%_/_20%)_0px_10px_20px_-15px] focus:outline-none">
                         <Dialog.Title className="text-mauve12 m-0 text-[17px] font-medium">
                             Image Gallery
                         </Dialog.Title>
-                        <ImageTiles isLoading={handleLoading} />
+                        <ImageTiles />
                         <div className="mt-[25px] flex justify-end">
                             <Dialog.Close asChild>
                                 <button className="bg-green4 text-green11 hover:bg-green5 focus:shadow-green7 inline-flex h-[35px] items-center justify-center rounded-[4px] px-[15px] font-medium leading-none focus:shadow-[0_0_0_2px] focus:outline-none">

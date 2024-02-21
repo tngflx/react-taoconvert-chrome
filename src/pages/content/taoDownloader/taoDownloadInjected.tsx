@@ -1,10 +1,11 @@
-import useStorage from "../../../shared/hooks/useStorage";
-import dataStore from "../../../shared/storages/reviewItemSkuBase";
+import dataStore, { loadState } from "../../../shared/storages/reviewItemSkuBase";
 import { DOMTools, MutationObserverManager } from "../utils/misc";
 import { processReviewTab } from "./reviewTabInjected";
 const mutObserverManager = new MutationObserverManager();
 
 export async function taoDownloader() {
+    await loadState.setLoad(true)
+
     const all_sku_items = document.querySelectorAll('div.skuItemWrapper .skuItem')
 
     let { href: currentURL, origin: domain, search: queryString, pathname } = window.location
@@ -94,5 +95,5 @@ export async function taoDownloader() {
 
     await dataStore.updateRemappedSkuBase(remapped_skubase)
     await dataStore.updateRemappedReviewData(remapped_review_data)
-
+    await loadState.setLoad(false)
 }

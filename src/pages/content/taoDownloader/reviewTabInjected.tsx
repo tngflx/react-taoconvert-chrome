@@ -63,16 +63,9 @@ const selectionReducer = (state, action) => {
     }
 };
 
-export const ImageTiles = ({ isLoading }) => {
+export const ImageTiles = () => {
     const data = useStorage(dataStore);
     const [selectedImages, dispatch] = useReducer(selectionReducer, []);
-
-    useEffect(() => {
-        isLoading = true;
-        const { remappedReviewData } = data;
-        if (remappedReviewData)
-            isLoading = false;
-    }, []);
 
     const handleImageClick = (imageSrc) => {
         dispatch({ type: TOGGLE_SELECTION, payload: imageSrc });
