@@ -13,6 +13,10 @@ const ImageGalleryDialogTemplate = ({ shadowRootModal, onClick }) => {
     let isLoading = useStorage(loadState)
 
     console.log(isLoading)
+
+    const handleCollectAllSelections = (data) => {
+        console.log(data)
+    }
     return (
         <>
             <Dialog.Root>
@@ -37,16 +41,19 @@ const ImageGalleryDialogTemplate = ({ shadowRootModal, onClick }) => {
                         <Dialog.Title className="text-mauve12 m-0 text-[17px] font-medium">
                             Image Gallery
                         </Dialog.Title>
-                        <ImageTiles />
+                        <ImageTiles collectedSelections={handleCollectAllSelections} />
                         <div className="mt-[25px] flex justify-end">
                             <Dialog.Close asChild>
-                                <button className="bg-green4 text-green11 hover:bg-green5 focus:shadow-green7 inline-flex h-[35px] items-center justify-center rounded-[4px] px-[15px] font-medium leading-none focus:shadow-[0_0_0_2px] focus:outline-none">
+                                <button
+                                    onClick={() => handleCollectAllSelections(selectedImages)}
+                                    className="bg-green4 text-green11 hover:bg-green5 focus:shadow-green7 inline-flex h-[35px] items-center justify-center rounded-[4px] px-[15px] font-medium leading-none focus:shadow-[0_0_0_2px] focus:outline-none">
                                     Save changes
                                 </button>
                             </Dialog.Close>
                         </div>
                         <Dialog.Close asChild>
                             <button
+                                onClick={collectAllSelections}
                                 className="text-violet11 hover:bg-violet4 focus:shadow-violet7 absolute top-[10px] right-[10px] inline-flex h-[25px] w-[25px] appearance-none items-center justify-center rounded-full focus:shadow-[0_0_0_2px] focus:outline-none"
                                 aria-label="Close"
                             >

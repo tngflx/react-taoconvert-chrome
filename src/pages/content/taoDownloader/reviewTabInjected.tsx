@@ -44,36 +44,38 @@ export async function processReviewTab() {
     return remapped_review_data
 }
 
-// Action Types
-const TOGGLE_SELECTION = "TOGGLE_SELECTION";
-const CLEAR_SELECTION = "CLEAR_SELECTION";
-
-// Reducer function
 const selectionReducer = (state, action) => {
     switch (action.type) {
-        case TOGGLE_SELECTION:
+        case "TOGGLE_SELECTION":
             const isSelected = state.includes(action.payload);
             return isSelected
                 ? state.filter((src) => src !== action.payload)
                 : [...state, action.payload];
-        case CLEAR_SELECTION:
+        case "CLEAR_SELECTION":
             return [];
+        case "GET_ALL_SELECTIONS":
+            console.log(state, action);
+            break;
         default:
             return state;
     }
 };
 
-export const ImageTiles = () => {
+export const ImageTiles = ({ collectAllSelections }) => {
     const data = useStorage(dataStore);
     const [selectedImages, dispatch] = useReducer(selectionReducer, []);
 
     const handleImageClick = (imageSrc) => {
-        dispatch({ type: TOGGLE_SELECTION, payload: imageSrc });
+        dispatch({ type: "TOGGLE_SELECTION", payload: imageSrc });
     };
 
     const handleClearSelection = () => {
-        dispatch({ type: CLEAR_SELECTION });
+        dispatch({ type: "CLEAR_SELECTION" });
     };
+
+    const collectAllSelections = () => {
+        dispatch({ type: "GET_ALL_SELECTIONS", selectedImages })
+    }
 
     return (
         <div className="grid grid-cols-8 gap-4 mt-4">
