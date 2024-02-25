@@ -20,3 +20,13 @@ interface UrlParamData {
     detail_v: string;
     exParams: string; // Assuming exParams is a JSON string
 }
+interface ReviewDataType {
+    revPicPathList: string[];
+    reviewDate: string;
+    skuText: string;
+    reviewWordContent: string;
+    reviewAppendVO?: {
+        appendedWordContent: string;
+        reviewPicPathList: string[];
+    };
+}

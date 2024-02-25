@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useReducer } from "react"
+﻿import React, { useEffect, useState, useReducer } from "react"
 import useStorage from "../../../shared/hooks/useStorage";
 import dataStore from "../../../shared/storages/reviewItemSkuBase";
 import { convertImageUrl } from "../utils/imageResize";
+import * as Dialog from '@radix-ui/react-dialog';
 
 export async function processReviewTab() {
     let { href: currentURL, origin: domain, search: queryString, pathname } = window.location
     const queryParams = new URLSearchParams(queryString);
 
-    const url_param_data = { "itemId": queryParams.get('id'), "bizCode": "ali.china.tmall", "channel": "pc_detail", "pageSize": 20, "pageNum": 1 }
+    const url_param_data = { "itemId": queryParams.get('id'), "bizCode": "ali.china.tmall", "channel": "pc_detail", "pageSize": 100, "pageNum": 1 }
 
     const h5api_review_data: { data: any } = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({ msg_action: 'get_itempage_reviews', url_param_data }, h5api_data => {
@@ -17,31 +18,36 @@ export async function processReviewTab() {
     const { data: { module: { reviewVOList } } } = h5api_review_data;
 
     const remapped_review_data = reviewVOList
-        ?.map(review => {
+        ?.reduce((grouped_by_skutext_review_data, review) => {
             const { reviewAppendVO } = review;
-            const revPicPathList = review.reviewPicPathList || (reviewAppendVO?.reviewPicPathList || []);
+            // Flatten 
+            const revPicPathList = [...(review.reviewPicPathList || []), ...(reviewAppendVO?.reviewPicPathList || [])];
+            if (revPicPathList?.length == 0) return grouped_by_skutext_review_data;
 
-            if (reviewAppendVO) {
-                const { appendedWordContent } = reviewAppendVO;
-                return {
-                    revPicPathList,
-                    reviewDate: review.reviewDate,
-                    skuText: review.skuText,
-                    reviewWordContent: review.reviewWordContent,
-                    reviewAppendVO: appendedWordContent ? { appendedWordContent, reviewPicPathList: reviewAppendVO.reviewPicPathList } : undefined
-                };
+            const skuValue = review.skuText['颜色分类'];
+
+            const { appendedWordContent } = reviewAppendVO;
+            let existing_entry = grouped_by_skutext_review_data.get(skuValue)
+
+            if (!existing_entry) {
+                existing_entry = {
+                    skuText: skuValue,
+                    review_data: []
+                }
+                grouped_by_skutext_review_data.set(skuValue, existing_entry);
+
             }
 
-            return {
+            existing_entry.review_data.push({
                 revPicPathList,
                 reviewDate: review.reviewDate,
-                skuText: review.skuText,
                 reviewWordContent: review.reviewWordContent
-            };
-        })
-        .filter(entry => Object.values(entry).every(value => value !== null && value !== undefined));
+            })
 
-    return remapped_review_data
+            return grouped_by_skutext_review_data;
+        }, new Map())
+
+    return Array.from(remapped_review_data.values())
 }
 
 const selectionReducer = (state, action) => {
@@ -53,15 +59,13 @@ const selectionReducer = (state, action) => {
                 : [...state, action.payload];
         case "CLEAR_SELECTION":
             return [];
-        case "GET_ALL_SELECTIONS":
-            console.log(state, action);
-            break;
         default:
             return state;
     }
 };
 
-export const ImageTiles = ({ collectAllSelections }) => {
+
+export const ImageTiles = () => {
     const data = useStorage(dataStore);
     const [selectedImages, dispatch] = useReducer(selectionReducer, []);
 
@@ -73,62 +77,92 @@ export const ImageTiles = ({ collectAllSelections }) => {
         dispatch({ type: "CLEAR_SELECTION" });
     };
 
-    const collectAllSelections = () => {
-        dispatch({ type: "GET_ALL_SELECTIONS", selectedImages })
+    const handleCollectAllSelections = () => {
+        const imageSelections = selectedImages.slice(); // Create a copy of selectedImages
+        const result = [];
+
+        data.remappedReviewData.forEach(({ skuText, review_data }: { skuText, review_data: any }) => {
+            const selectedImagesForSku = review_data
+                .flatMap(({ revPicPathList }) =>
+                    revPicPathList.filter((imagePath) =>
+                        imageSelections.includes(imagePath)
+                    )
+                );
+
+            if (selectedImagesForSku.length > 0) {
+                result.push({ skuText, selectedImages: selectedImagesForSku });
+            }
+        });
+
+        console.log(result)
+    };
+
+    if (!data || !data.remappedReviewData) {
+        return null;
     }
 
     return (
-        <div className="grid grid-cols-8 gap-4 mt-4">
-            {data.remappedReviewData.map(({ revPicPathList, skuText }: { revPicPathList: string[], skuText: string }, parentIndex: number) => (
-                <div key={parentIndex} className="col-span-2 flex flex-col items-center justify-center">
-                    <div className="grid grid-cols-2 gap-3">
-                        {revPicPathList.map((link, childIndex) => (
-                            <React.Fragment key={childIndex}>
-                                <div className="relative">
-                                    <img
-                                        src={convertImageUrl(link, 450, 90)}
-                                        alt={`Image ${parentIndex + 1}.${childIndex + 1}`}
-                                        className="w-full h-[200px] object-cover rounded-md mb-2 hover:scale-120 transition-transform duration-300 cursor-pointer"
-                                        onClick={() => handleImageClick(link)}
-                                    />
-                                    {selectedImages.includes(link) && (
-                                        <div className="absolute top-0 left-0 p-2">
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                                className="h-6 w-6 text-green-500"
-                                                onClick={() => handleImageClick(link)}
-                                                style={{ cursor: 'pointer' }}
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                        </div>
-                                    )}
-                                </div>
-                            </React.Fragment>
+        <>
+            <div className="flex flex-wrap gap-4 mb-12">
+                {data.remappedReviewData.map(({ review_data, skuText }: { review_data: [], skuText: [] }, parentIndex: number) => (
+                    <div key={parentIndex} className="w-full lg:w-2/10 mx-auto">
+                        <p className="text-[15px] mb-4 text-left ">{skuText}</p>
+                        {review_data.map(({ revPicPathList }: { revPicPathList: [] }, childIndex) => (
+                            <div key={childIndex} className="grid grid-cols-6 gap-3">
+                                {revPicPathList.map((imagePath, imageIndex) => (
+                                    <div className="relative">
+                                        <img
+                                            src={convertImageUrl(imagePath, 450, 90)}
+                                            alt={`Image ${parentIndex + 1}.${childIndex + 1}`}
+                                            className="w-full h-[200px] object-cover rounded-lg mb-2 hover:scale-125 transition-transform duration-300 cursor-pointer"
+                                            onClick={() => handleImageClick(imagePath)}
+                                        />
+                                        {selectedImages.includes(imagePath) && (
+                                            <div className="absolute top-0 left-0 p-2">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                    className="h-6 w-6 text-green-500"
+                                                    onClick={() => handleImageClick(imagePath)}
+                                                    style={{ cursor: 'pointer' }}
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth="2"
+                                                        d="M5 13l4 4L19 7"
+                                                    />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         ))}
                     </div>
-                    <p className="text-sm mt-2 text-center">skuText</p>
-                </div>
-            ))}
-            {selectedImages.length > 0 && (
-                <div className="col-span-8 mt-4">
+                ))}
+            </div>
+            <div className="fixed flex flex-row gap-4 inset-x-0 bottom-0 bg-gray-700 p-2 w-full justify-end">
+                {selectedImages.length > 0 && (
                     <button
-                        className="bg-green-500 text-white px-4 py-2 rounded"
+                        className="bg-green-500 text-white px-[15px] h-[35px] rounded"
                         onClick={handleClearSelection}
                     >
                         Clear Selection
                     </button>
-                </div>
-            )}
-        </div>
+                )}
+                <Dialog.Close asChild>
+                    <button
+                        onClick={handleCollectAllSelections}
+                        className="bg-green5 text-green11 hover:bg-green6 focus:shadow-green7 h-[35px] items-center justify-center rounded-[4px] px-[15px] font-medium leading-none focus:shadow-[0_0_0_2px] focus:outline-none"
+                    >
+                        Save changes
+                    </button>
+                </Dialog.Close>
+            </div>
+        </>
     );
 };
 

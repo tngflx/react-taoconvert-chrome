@@ -293,18 +293,19 @@ if (location.href.includes("https://item.taobao.com/")) {
             const new_modal_wrapper = document.createElement('div');
             new_modal_wrapper.className = 'taomodal_image_gallery_wrapper';
             Object.assign(new_modal_wrapper.style, {
-                position: 'absolute',
+                position: 'relative',
                 top: '0',
                 left: '0',
                 zIndex: '9999999',
             });
 
-
             item_header_el.appendChild(new_button_wrapper);
             root_dom.appendChild(new_modal_wrapper);
 
+            taoDownloader()
+
             render(
-                <ImageGalleryDialog onClick={taoDownloader}
+                <ImageGalleryDialog
                     shadowRootButton={new_button_wrapper}
                     shadowRootModal={new_modal_wrapper}
                 />
