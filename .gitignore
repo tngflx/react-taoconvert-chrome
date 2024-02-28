@@ -21,3 +21,4 @@ utils/reload/*.js
 utils/reload/injections/*.js
 public/manifest.json
 /pnpm-lock.yaml
+/pnpm-lock.yaml
