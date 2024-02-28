@@ -1,4 +1,4 @@
-import dataStore, { loadState } from "../../../shared/storages/reviewItemSkuBase";
+﻿import dataStore, { loadState } from "../../../shared/storages/reviewItemSkuBase";
 import { DOMTools, MutationObserverManager } from "../utils/misc";
 import { processReviewTab } from "./reviewTabInjected";
 const mutObserverManager = new MutationObserverManager();
@@ -47,53 +47,94 @@ export async function taoDownloader() {
     ])
 
     if (h5api_data.status === 'fulfilled') {
-        const { data: { skuBase, skuCore, item, seller } } = h5api_data.value as { data: any };
+        /**
+        * example of json data returned by h5api
+        * "skuBase.skus": [
+                {
+                    "propPath": "1627207:30146346867;20122:368194910;20105:103646",
+                    "skuId": "5311150259765"
+        * where the first segment 1627207:30146346867, refer to main product title
+        * 20122:368194910;20105:103646 variation of product
+        * ----------------------------------------------------------------------------------
+        * "skuBase.props": [
+                {
+                    "hasImage": "true",
+                    "name": "颜色分类",
+                    "nameDesc": "（24）",
+                    "pid": "1627207",
+                    "values": [
+                        {
+                            "image": "https://gw.alicdn.com/bao/uploaded/i4/3372205069/O1CN01wTKOK81nJeZ6el0k7_!!3372205069.jpg",
+                            "name": "幻14白-R9-5900HS/RTX3060/2K/120Hz/14英寸（质保6个月）",
+                            "sortOrder": "0",
+                            "vid": "30146346867"
+        *----------------------------------------------------------------------------------------
+        *  "skuCore.sku2info": {
+        *    "5311150259765": {
+                    "logisticsTime": "48小时内发货",
+                    "moreQuantity": "false",
+                    "price": {
+                        "priceActionText": "前往手淘查看更多优惠",
+                        "priceActionType": "buy_in_mobile",
+                        "priceMoney": "539900",
+                        "priceText": "5399"
+                    },
+                    "quantity": "0",
+                    "quantityText": "无货"
+                },
+        */
+        const { data: { skuBase, skuCore } } = h5api_data.value as { data: any };
 
-        const remapped_skubase = skuBase.skus.map(({ propPath, skuId }) => {
+        const groupedByMainProductTitle = skuBase.skus.reduce((groupedMap, { propPath, skuId }) => {
             const prop_path_segments = propPath.split(";");
+            const [main_product_pid, main_product_vid] = prop_path_segments[0].split(":").map(i => i.trim())
+            const main_product_title = skuBase.props.find((p) => p.pid === main_product_pid)?.values?.find((v) => v.vid === main_product_vid)?.name
 
-            const all_product_props = prop_path_segments.map((segment) => {
-                // Split each segment by ":"
+            if (!groupedMap.has(main_product_title)) {
+                groupedMap.set(main_product_title, []);
+            }
+
+            const all_product_props = prop_path_segments.slice(1).map((segment) => {
                 const [pid, vid] = segment.split(":").map((item) => item.trim());
-
-                // Find corresponding names for pid and vid in props
                 const prop = skuBase.props.find((p) => p.pid === pid);
 
                 const sku2info: Sku2Info = skuCore.sku2info;
-                const { price, quantity } = Object.entries(sku2info).find(([key]) => key === skuId)?.[1]
+                const { price, quantity } = sku2info[skuId] || { price: {}, quantity: '' };
 
                 if (prop) {
                     const value = prop.values.find((v) => v.vid === vid);
                     if (value) {
                         const preprocess_sku = {
-                            name_segment: value.name,
-                            price_text: price?.priceText,
+                            product_variation: value.name,
+                            product_price: price?.priceText,
                             quantity
-                        }
+                        };
 
-                        return value?.image ? { image: value.image, ...preprocess_sku } : preprocess_sku
-
+                        return value.image ? { image: value.image, ...preprocess_sku } : preprocess_sku;
                     }
                 }
-            }).reduce((acc, { name_segment, image, price_text, quantity }) => {
-                acc.product_name.push(name_segment)
-                if (image)
-                    acc.product_image_link = image
-                acc.product_price = price_text
-                acc.product_avail_quantity = quantity
-                return acc
-            }, { product_name: [], product_image_link: '', product_price: '', product_avail_quantity: '' })
+            }).reduce((acc, { product_variation, image, product_price, quantity }) => {
+                acc.product_variation.push(product_variation);
+                if (image) acc.product_image_link = image;
+                acc.product_price = product_price;
+                acc.product_avail_quantity = quantity;
+                return acc;
+            }, { product_variation: [], product_image_link: '', product_price: '', product_avail_quantity: '' });
 
-            return { ...all_product_props, skuId }
-        })
-        await dataStore.updateRemappedSkuBase(remapped_skubase)
+            groupedMap.get(main_product_title).push({ ...all_product_props, skuId });
+            return groupedMap;
 
+        }, new Map<string, any[]>());
+
+        // Update the data store with the grouped information
+        await dataStore.updateRemappedSkuBase(groupedByMainProductTitle);
     } else {
-        throw Error('remapped_sku_base failedd!')
+        throw new Error('remapped_sku_base failed!');
     }
 
+
     if (remapped_review_data.status == 'fulfilled') {
-        await dataStore.updateRemappedReviewData(remapped_review_data.value)
+        await dataStore.updateRemappedReviewData(remapped_review_data.value as any)
     } else {
         throw Error('remapped_review_data failed!')
     }

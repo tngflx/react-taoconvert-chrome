@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useReducer } from "react"
+﻿import React, {  useReducer } from "react"
 import useStorage from "../../../shared/hooks/useStorage";
 import dataStore from "../../../shared/storages/reviewItemSkuBase";
 import { convertImageUrl } from "../utils/imageResize";
@@ -31,12 +31,15 @@ export async function processReviewTab() {
 
             if (!existing_entry) {
                 existing_entry = {
-                    skuText: skuValue,
+                    skuText: {
+                        ...review.skuText,
+                        category: skuValue
+                    },
                     review_data: []
                 }
                 grouped_by_skutext_review_data.set(skuValue, existing_entry);
-
             }
+            delete existing_entry.skuText['颜色分类'];
 
             existing_entry.review_data.push({
                 revPicPathList,
@@ -81,7 +84,7 @@ export const ImageTiles = () => {
         const imageSelections = selectedImages.slice(); // Create a copy of selectedImages
         const result = [];
 
-        data.remappedReviewData.forEach(({ skuText, review_data }: { skuText, review_data: any }) => {
+        data.remappedReviewData.forEach(({ skuText, review_data }) => {
             const selectedImagesForSku = review_data
                 .flatMap(({ revPicPathList }) =>
                     revPicPathList.filter((imagePath) =>
@@ -104,11 +107,11 @@ export const ImageTiles = () => {
     return (
         <>
             <div className="flex flex-wrap gap-4 mb-12">
-                {data.remappedReviewData.map(({ review_data, skuText }: { review_data: [], skuText: [] }, parentIndex: number) => (
+                {data.remappedReviewData.map(({ review_data, skuText: { category } }, parentIndex: number) => (
                     <div key={parentIndex} className="w-full lg:w-2/10 mx-auto">
-                        <p className="text-[15px] mb-4 text-left ">{skuText}</p>
+                        <p className="text-[15px] mb-4 text-left ">{category}</p>
                         {review_data.map(({ revPicPathList }: { revPicPathList: [] }, childIndex) => (
-                            <div key={childIndex} className="grid grid-cols-6 gap-3">
+                            <div key={childIndex} className="grid grid-cols-8 gap-3">
                                 {revPicPathList.map((imagePath, imageIndex) => (
                                     <div className="relative">
                                         <img

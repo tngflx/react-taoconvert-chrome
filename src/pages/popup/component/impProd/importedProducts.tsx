@@ -16,6 +16,25 @@ const Footer = ({ clearListHandler, RestoreListHandler }) => {
     );
 };
 
+const DeliveryStatusIndicator = ({ deliveryStatus }) => {
+    const statusColors = {
+        none: 'bg-red-500',
+        'arrived': 'bg-purple-500 text-white',
+        'on the way': 'bg-yellow-300 text-black',
+        'wait to weight': 'bg-yellow-300 text-black',
+        'wait for deliver': 'bg-orange-500 text-white',
+        delivery: 'bg-green-500 text-white',
+    };
+
+    const bgColorClass = statusColors[deliveryStatus.toLowerCase()] || 'bg-gray-500';
+
+    return (
+        <span className={`status-indicator p-1.5 rounded-full text-center ${bgColorClass}`}>
+            {deliveryStatus === 'none' ? 'New Entry' : deliveryStatus}
+        </span>
+    );
+};
+
 export const ImportedProducts = () => {
     const { clearListHandler, loading, products, setSuccessEntry } = useContext(ImpProdContext);
 
@@ -52,31 +71,7 @@ export const ImportedProducts = () => {
                                     <div className="flex min-w-0 gap-x-4 h-full">
                                         <div className="image_and_status flex w-20 flex-col items-center">
                                             <img className="h-12 w-12 bg-gray-500 mb-2" src={product_image_url} alt="" />
-                                            {(delivery_status.toLowerCase() === 'none' && (
-                                                <span className="status-indicator bg-red-500 text-white p-1.5 rounded-full animate-pulse text-center">
-                                                    New Entry
-                                                </span>
-                                            )) ||
-                                                (delivery_status.toLowerCase() === 'on the way' && (
-                                                    <span className="status-indicator bg-yellow-400 text-black p-1.5 rounded-full text-center">
-                                                        {delivery_status}
-                                                    </span>
-                                                )) ||
-                                                (delivery_status.toLowerCase() === 'wait to weight' && (
-                                                    <span className="status-indicator bg-yellow-400 text-black p-1.5 rounded-full text-center">
-                                                        {delivery_status}
-                                                    </span>
-                                                )) ||
-                                                (delivery_status.toLowerCase() === 'wait for deliver' && (
-                                                    <span className="status-indicator bg-orange-500 text-white p-1.5 rounded-full text-center">
-                                                        {delivery_status}
-                                                    </span>
-                                                )) ||
-                                                (delivery_status.toLowerCase() === 'delivery' && (
-                                                    <span className="status-indicator bg-green-500 text-white p-1.5 rounded-full text-center">
-                                                        {delivery_status}
-                                                    </span>
-                                                ))}
+                                            <DeliveryStatusIndicator deliveryStatus={delivery_status} />
                                         </div>
                                         <div className="description min-w-0 flex-auto overflow-visible group relative" onMouseOver={() => setSuccessEntry(null)}>
                                             <p className="text-sm font-semibold leading-6 text-white-900 z-10 relative">

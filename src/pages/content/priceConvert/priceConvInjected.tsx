@@ -1,13 +1,10 @@
 import { render } from "react-dom";
-import { CurrencyAPI } from "../utils/currencyAPI";
 import { MutationObserverManager, DOMTools } from '../utils/misc';
 import { taoDownloader } from "../taoDownloader/taoDownloadInjected";
-import { priceBoxRenderer } from "../components/renderer/priceBoxRenderer";
-import { PriceBox } from "../components/priceBoxComponent";
-import ButtonRenderer from "../components/renderer/taoButtonRenderer";
-import ImageGalleryDialog from "../components/imageGalleryDialog";
-import RadixRenderer from "../components/renderer/radixUIRenderer";
-import { useRef } from "react";
+import { CurrencyAPI } from "../utils/currencyAPI";
+import MultiStepFormInDialog from "../taoDownloader/multiStepFormInDialog";
+import { priceBoxRenderer } from "../sharedComponents/renderer/priceBoxRenderer";
+import { PriceBox } from "../sharedComponents/priceBoxComponent";
 const { findChildThenParentElbyClassName } = DOMTools;
 
 // Create an instance of the CurrencyAPI class
@@ -305,7 +302,7 @@ if (location.href.includes("https://item.taobao.com/")) {
             taoDownloader()
 
             render(
-                <ImageGalleryDialog
+                <MultiStepFormInDialog
                     shadowRootButton={new_button_wrapper}
                     shadowRootModal={new_modal_wrapper}
                 />

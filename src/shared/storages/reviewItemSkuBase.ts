@@ -1,6 +1,12 @@
 import { BaseStorage, createStorage, StorageType } from '@src/shared/storages/base';
 
-type RemappedReviewData = [];
+type RemappedReviewData = [{
+    skuText: {
+        [key: string]: any
+    }
+    review_data: any[];
+} & Record<string, any>]
+
 type RemappedSkuBase = [];
 
 type DataStorage = BaseStorage<{ remappedReviewData: RemappedReviewData; remappedSkuBase: RemappedSkuBase; }> & {
@@ -11,7 +17,7 @@ type DataStorage = BaseStorage<{ remappedReviewData: RemappedReviewData; remappe
 const dataStorage = createStorage<{
     remappedReviewData: RemappedReviewData; remappedSkuBase: RemappedSkuBase;
 }>('data-storage-key', {
-    remappedReviewData: [],
+    remappedReviewData: [{ skuText: {}, review_data: [] }],
     remappedSkuBase: []
 }, {
     storageType: StorageType.Local,
@@ -37,7 +43,6 @@ const dataStore: DataStorage = {
 
 type loadStateType = BaseStorage<boolean> & {
     setLoad: (s: boolean) => Promise<void>;
-//    getLoad: () => Promise<boolean>;
 };
 
 const loadStore = createStorage<boolean>('load-key', false, {

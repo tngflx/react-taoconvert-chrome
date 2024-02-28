@@ -1,6 +1,6 @@
 import { render } from 'react-dom';
 import { DOMTools } from '../utils/misc';
-import ButtonRenderer from '../components/renderer/taoButtonRenderer';
+import ButtonRenderer from '../sharedComponents/renderer/taoButtonRenderer';
 const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
 
 const port = chrome.runtime.connect({ name: 'content-script' });
