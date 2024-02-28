@@ -67,7 +67,17 @@ export async function taoDownloader() {
                             "image": "https://gw.alicdn.com/bao/uploaded/i4/3372205069/O1CN01wTKOK81nJeZ6el0k7_!!3372205069.jpg",
                             "name": "幻14白-R9-5900HS/RTX3060/2K/120Hz/14英寸（质保6个月）",
                             "sortOrder": "0",
-                            "vid": "30146346867"
+                            "vid": "30146346867"}
+        *       {
+                    "hasImage": "false",
+                    "name": "硬盘容量",
+                    "pid": "20122",
+                    "values": [
+                        {
+                            "name": "1T固态硬盘",
+                            "sortOrder": "1",
+                            "vid": "368194910"
+                        }]
         *----------------------------------------------------------------------------------------
         *  "skuCore.sku2info": {
         *    "5311150259765": {
@@ -85,44 +95,39 @@ export async function taoDownloader() {
         */
         const { data: { skuBase, skuCore } } = h5api_data.value as { data: any };
 
+        function matchSkuBase(to_match_pid, to_match_vid) {
+            return skuBase.props.find((p) => p.pid === to_match_pid)?.values?.find((v) => v.vid === to_match_vid)
+        }
+
         const groupedByMainProductTitle = skuBase.skus.reduce((groupedMap, { propPath, skuId }) => {
             const prop_path_segments = propPath.split(";");
             const [main_product_pid, main_product_vid] = prop_path_segments[0].split(":").map(i => i.trim())
-            const main_product_title = skuBase.props.find((p) => p.pid === main_product_pid)?.values?.find((v) => v.vid === main_product_vid)?.name
+            const main_product_skubase_prop = matchSkuBase(main_product_pid, main_product_vid)
+
+            const main_product_title = main_product_skubase_prop?.name
+            const main_product_image = main_product_skubase_prop?.image
+
+            const sku2info: Sku2Info = skuCore.sku2info;
+            const { price, quantity } = sku2info[skuId] || { price: {}, quantity: '' };
 
             if (!groupedMap.has(main_product_title)) {
                 groupedMap.set(main_product_title, []);
             }
 
-            const all_product_props = prop_path_segments.slice(1).map((segment) => {
+            const [first_cat, second_cat] = prop_path_segments.slice(1).map((segment) => {
                 const [pid, vid] = segment.split(":").map((item) => item.trim());
-                const prop = skuBase.props.find((p) => p.pid === pid);
+                return matchSkuBase(pid, vid)
+            })
 
-                const sku2info: Sku2Info = skuCore.sku2info;
-                const { price, quantity } = sku2info[skuId] || { price: {}, quantity: '' };
+            const key = `${first_cat?.name || ''}/${second_cat?.name || ''}`;
+            const value = {
+                price: price?.priceText,
+                image: first_cat?.image || second_cat?.image || main_product_image
+            };
 
-                if (prop) {
-                    const value = prop.values.find((v) => v.vid === vid);
-                    if (value) {
-                        const preprocess_sku = {
-                            product_variation: value.name,
-                            product_price: price?.priceText,
-                            quantity
-                        };
-
-                        return value.image ? { image: value.image, ...preprocess_sku } : preprocess_sku;
-                    }
-                }
-            }).reduce((acc, { product_variation, image, product_price, quantity }) => {
-                acc.product_variation.push(product_variation);
-                if (image) acc.product_image_link = image;
-                acc.product_price = product_price;
-                acc.product_avail_quantity = quantity;
-                return acc;
-            }, { product_variation: [], product_image_link: '', product_price: '', product_avail_quantity: '' });
-
-            groupedMap.get(main_product_title).push({ ...all_product_props, skuId });
-            return groupedMap;
+            // Assign each entry as an object in groupedMap
+            groupedMap.get(main_product_title)[key] = value;
+            return groupedMap
 
         }, new Map<string, any[]>());
 
