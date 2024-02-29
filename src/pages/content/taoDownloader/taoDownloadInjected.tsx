@@ -111,7 +111,7 @@ export async function taoDownloader() {
             const { price, quantity } = sku2info[skuId] || { price: {}, quantity: '' };
 
             if (!groupedMap.has(main_product_title)) {
-                groupedMap.set(main_product_title, []);
+                groupedMap.set(main_product_title, { image: main_product_image });
             }
 
             const [first_cat, second_cat] = prop_path_segments.slice(1).map((segment) => {
@@ -122,8 +122,10 @@ export async function taoDownloader() {
             const key = `${first_cat?.name || ''}/${second_cat?.name || ''}`;
             const value = {
                 price: price?.priceText,
-                image: first_cat?.image || second_cat?.image || main_product_image
             };
+
+            const image = first_cat?.image || second_cat?.image || main_product_image
+            groupedMap.get(main_product_title)['image'] = image
 
             // Assign each entry as an object in groupedMap
             groupedMap.get(main_product_title)[key] = value;
@@ -132,7 +134,7 @@ export async function taoDownloader() {
         }, new Map<string, any[]>());
 
         // Update the data store with the grouped information
-        await dataStore.updateRemappedSkuBase(groupedByMainProductTitle);
+        await dataStore.updateRemappedSkuBase(Object.fromEntries(groupedByMainProductTitle) as []);
     } else {
         throw new Error('remapped_sku_base failed!');
     }
