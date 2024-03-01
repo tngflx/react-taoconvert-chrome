@@ -8,7 +8,6 @@ const ButtonRenderer = ({ onClickHandler, containerElement, buttonWrapperClasses
         const shadowRoot = containerElement.attachShadow({ mode: 'open' });
 
         // Can't directly return buttonElement because we still need to do dom manipulation on this button
-        // The only way is to useEffect hook to do dom manipulation before render
         render(
             <div className={buttonWrapperClasses}>
                 <button

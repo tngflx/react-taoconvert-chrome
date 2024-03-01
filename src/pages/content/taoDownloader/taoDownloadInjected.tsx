@@ -1,4 +1,5 @@
-﻿import dataStore, { loadState } from "../../../shared/storages/reviewItemSkuBase";
+﻿import Result from "postcss/lib/result";
+import dataStore, { loadState } from "../../../shared/storages/reviewItemSkuBase";
 import { DOMTools, MutationObserverManager } from "../utils/misc";
 import { processReviewTab } from "./reviewTabInjected";
 const mutObserverManager = new MutationObserverManager();
@@ -95,14 +96,22 @@ export async function taoDownloader() {
         */
         const { data: { skuBase, skuCore } } = h5api_data.value as { data: any };
 
-        function matchSkuBase(to_match_pid, to_match_vid) {
-            return skuBase.props.find((p) => p.pid === to_match_pid)?.values?.find((v) => v.vid === to_match_vid)
+        function matchSkuBase(to_match_pid, to_match_vid, option: "inner" | "outer") {
+            if (option == "inner")
+                return skuBase.props.find((p) => p.pid === to_match_pid)?.values?.find((v) => v.vid === to_match_vid)
+            else if (option == "outer")
+                return skuBase.props.find((p) => p.pid === to_match_pid)
+        }
+        interface GroupedKey {
+            main_product_title: string;
+            category: Record<string, any>;
+            image: string;
         }
 
-        const groupedByMainProductTitle = skuBase.skus.reduce((groupedMap, { propPath, skuId }) => {
+        const remapped_skubase_data = skuBase.skus.reduce((groupedMap, { propPath, skuId }) => {
             const prop_path_segments = propPath.split(";");
             const [main_product_pid, main_product_vid] = prop_path_segments[0].split(":").map(i => i.trim())
-            const main_product_skubase_prop = matchSkuBase(main_product_pid, main_product_vid)
+            const main_product_skubase_prop = matchSkuBase(main_product_pid, main_product_vid, "inner")
 
             const main_product_title = main_product_skubase_prop?.name
             const main_product_image = main_product_skubase_prop?.image
@@ -110,31 +119,36 @@ export async function taoDownloader() {
             const sku2info: Sku2Info = skuCore.sku2info;
             const { price, quantity } = sku2info[skuId] || { price: {}, quantity: '' };
 
-            if (!groupedMap.has(main_product_title)) {
-                groupedMap.set(main_product_title, { image: main_product_image });
+            const prop_keys = prop_path_segments.slice(1).reduce((accum, segment) => {
+                const [pid, vid] = segment.split(":").map(item => item.trim());
+                accum.category_lists += `${matchSkuBase(pid, vid, "outer")?.name}/`;
+                accum.combined_key += `${matchSkuBase(pid, vid, "inner")?.name}/`;
+                return accum;
+            }, { category_lists: '', combined_key: '' });
+
+            const { category_lists, combined_key } = prop_keys;
+
+            const existingEntry = groupedMap.find(entry => entry.main_product_title === main_product_title);
+
+            if (!existingEntry) {
+                // If it doesn't exist, create a new entry and add it to groupedMap
+                groupedMap.push({
+                    main_product_title,
+                    variation_names: category_lists.slice(0, -1),
+                    image: main_product_image || '',
+                    values: { [combined_key.slice(0, -1)]: [price?.priceText, quantity] },
+                });
+            } else {
+                // If the entry already exists, update the values directly
+                existingEntry.values[combined_key.slice(0, -1)] = [price?.priceText, quantity];
             }
 
-            const [first_cat, second_cat] = prop_path_segments.slice(1).map((segment) => {
-                const [pid, vid] = segment.split(":").map((item) => item.trim());
-                return matchSkuBase(pid, vid)
-            })
+            return groupedMap;
 
-            const key = `${first_cat?.name || ''}/${second_cat?.name || ''}`;
-            const value = {
-                price: price?.priceText,
-            };
-
-            const image = first_cat?.image || second_cat?.image || main_product_image
-            groupedMap.get(main_product_title)['image'] = image
-
-            // Assign each entry as an object in groupedMap
-            groupedMap.get(main_product_title)[key] = value;
-            return groupedMap
-
-        }, new Map<string, any[]>());
+        }, []);
 
         // Update the data store with the grouped information
-        await dataStore.updateRemappedSkuBase(Object.fromEntries(groupedByMainProductTitle) as []);
+        await dataStore.updateRemappedSkuBase(remapped_skubase_data);
     } else {
         throw new Error('remapped_sku_base failed!');
     }
