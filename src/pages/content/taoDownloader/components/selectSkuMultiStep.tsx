@@ -24,6 +24,26 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         onSelectSkuText(selectedCategories);
     };
 
+    const deDuplicateData = () => {
+        const uniqueArrays = data.remappedSkuBase.reduce((acc, { values }) => {
+            Object.keys(values).forEach((key) => {
+                const components = key.split('/');
+
+                components.forEach((component, index) => {
+                    acc[index] = acc[index] || [];
+
+                    if (!acc[index].includes(component)) {
+                        acc[index].push(component);
+                    }
+                });
+            });
+
+            return acc;
+        }, []);
+
+        return uniqueArrays;
+    }
+
     const renderCheckboxes = (mainKey, segments) =>
         segments.map((segment, index) => (
             <li key={index}>
@@ -78,19 +98,16 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 </ul>
                 {selectedCategories.size > 0 && (
                     <ul>
-                        {data.remappedSkuBase.map(({ main_product_title, values }) => {
-                            const segments = Object.keys(values).map(key => key.split('/')[0]);
-                            return selectedCategories.has(main_product_title)
-                                ? (
-                                    <li key={values}>
-                                        <label className="w-full py-3 ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                                            {segments}
-                                        </label>
-                                        <ul>{renderCheckboxes(values, segments)}</ul>
-                                    </li>
-                                )
-                                : [];
-                        })}
+                        {deDuplicateData().map((segment, index) => (
+                            <li key={index}>
+                                <div>
+                                    <label className="w-full py-3 ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                                        {segment}
+                                    </label>
+                                    {renderCheckboxes(data, segment)}
+                                </div>
+                            </li>
+                        ))}
                     </ul>
                 )}
             </div>
