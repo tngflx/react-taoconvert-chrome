@@ -1,25 +1,28 @@
 export class h5Encryption {
-    token: any;
-    time: Date
-    data: UrlParamData
-    appKey: string
+    protected h5enc_token: any;
+    protected h5enc_time: Number;
+    protected h5enc_data: string;
+    appKey: string = "12574478";
 
-    constructor(token, time, data) {
-        this.token = token;
-        this.time = time
-        this.data = data
-        this.appKey = "12574478"
+    private assertRequiredProperties(): asserts this is {
+        h5enc_token: string;
+        h5enc_time: string;
+        h5enc_data: string;
+    } {
+        if (this.h5enc_token === undefined || this.h5enc_time === undefined || this.h5enc_data === undefined) {
+            throw new Error('One or more required properties are not defined.');
+        }
     }
 
-    signH5ItemPageReq() {
-        console.log(this.token, this.time, this.data, this.appKey)
-        return this.h5ItemPage(this.token + "&" + this.time + "&" + this.appKey + "&" + this.data)
+    signH5ItemPageReq(): string {
+        this.assertRequiredProperties();
+        return this.h5ItemPage(`${this.h5enc_token}&${this.h5enc_time}&${this.appKey}&${this.h5enc_data}`);
     }
 
-    signH5ReviewReq() {
-        return this.h5ReviewPage(this.token + "&" + this.time + "&" + this.appKey + "&" + this.data)
+    signH5ReviewReq(): string {
+        this.assertRequiredProperties();
+        return this.h5ReviewPage(`${this.h5enc_token}&${this.h5enc_time}&${this.appKey}&${this.h5enc_data}`);
     }
-
     h5ItemPage(a) {
         function b(a, b) {
             return a << b | a >>> 32 - b
@@ -79,7 +82,7 @@ export class h5Encryption {
             for (c = 0; 3 >= c; c++)
                 b = a >>> 8 * c & 255,
                     e = "0" + b.toString(16),
-                    d += e.substr(e.length - 2, 2);
+                    d += e.slice(-2);
             return d
         }
         function n(a) {
@@ -215,7 +218,7 @@ export class h5Encryption {
         function s(e) {
             var t, n = "", r = "";
             for (t = 0; 3 >= t; t++)
-                n += (r = "0" + (e >>> 8 * t & 255).toString(16)).substr(r.length - 2, 2);
+                n += (r = "0" + (e >>> 8 * t & 255).toString(16)).slice(-2);
             return n
         }
         var l, c, p, u, d, f, m, g, v, h;

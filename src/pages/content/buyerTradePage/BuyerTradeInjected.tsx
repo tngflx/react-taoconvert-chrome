@@ -1,4 +1,4 @@
-import { render } from 'react-dom';
+﻿import { render } from 'react-dom';
 import { DOMTools } from '../utils/misc';
 import ButtonRenderer from '../sharedComponents/renderer/taoButtonRenderer';
 const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
@@ -34,11 +34,46 @@ const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
 port.onMessage.addListener(async (resp) => {
     const { msg_action, db_data, freight_html, freight_otw_arrive_data } = resp;
     const { buyertrade_tracking_info } = db_data
+    const parser = new DOMParser();
 
     switch (msg_action) {
-        case 'process_freight_html':
-            const parser = new DOMParser();
+        case 'process_mulupost_freight_html': {
+            const mulu_doc = parser.parseFromString(freight_html.mulu_html as string, 'text/html')
+            const panel_bd_arr = Array.from(mulu_doc.querySelectorAll('.panel-bd .m-desc-item'))
+            const freight_infos = panel_bd_arr.reduce((acc, item) => {
+                const label = item.querySelector('.label').textContent.trim();
+                const value = item.querySelector('.value').textContent.trim();
+                acc.push({ label, value });
 
+                return acc;
+            }, []);
+
+            const freightProps: { [key: string]: string } = {
+                tracking_code: mulu_doc.querySelector('.relative.panel .panel-hd .text-primary').textContent,
+                delivery_status_tracklink: mulu_doc.querySelector('.panel-ft a.btn-primary[href]')?.href,
+                date_added: freight_infos[7].value,
+            }
+            switch (true) {
+                case (/包裹运输中/g.test(freight_infos[7].value)):
+                    freightProps["delivery_status"] = 'delivery'
+                    break;
+                case (/运输完成/g.test(freight_infos[7].value)):
+                    freightProps["delivery_status"] = 'completed'
+                    break;
+                case (/签收入库/g.test(freight_infos[7].value)):
+                    freightProps["delivery_status"] = 'arrived'
+                    break;
+                case (/发货运输/g.test(freight_infos[7].value)):
+                    freightProps["delivery_status"] = 'on the way'
+                    break;
+                default:
+            }
+
+            port.postMessage({ msg_action: 'save_db', db_data })
+
+            break;
+        }
+        case 'process_nswex_freight_html': {
             const { delivery_html, ontheway_html, arrived_html } = Object.entries(freight_html).reduce((acc, [key, values]) =>
                 (acc[key] = parser.parseFromString(values as string, 'text/html'), acc)
                 , {}) as { delivery_html: Document, ontheway_html: Document, arrived_html: Document };
@@ -118,6 +153,7 @@ port.onMessage.addListener(async (resp) => {
             port.postMessage({ msg_action: 'save_db', db_data })
             console.log({ ...db_data })
             break;
+        }
         default:
     }
 });
@@ -163,10 +199,10 @@ port.onMessage.addListener(async (resp) => {
                     chrome.runtime.sendMessage({ msg_action: "get_buyertrade_tracking_code", orderId }, (buyertrade_tracking_info) => {
                         resolve(buyertrade_tracking_info);
                     });
-                });
+                })
+
 
                 if (!buyertrade_tracking_info) continue;
-
                 createBuyerTradeButton(bought_threadop_wrapper_el as HTMLElement)
 
                 const db_data: BuyerTradeData = {
@@ -186,7 +222,34 @@ port.onMessage.addListener(async (resp) => {
                  * reusable is usually db_data
                  * non reusable are just like state, and not for permanent store to db
                  */
-                port.postMessage({ msg_action: 'is_freight_processed', db_data, first_query } as PostMessageData)
+                const buyertrade_extrainfo: { data: any } = await new Promise((resolve) => {
+                    chrome.runtime.sendMessage({ msg_action: "get_itempage_products_moredetails", orderId }, buyertrade_extra_info => {
+                        resolve(buyertrade_extra_info)
+                    })
+                })
+                const { data: { data: buyertrade_deliver_address } } = buyertrade_extrainfo
+                const addressValue = buyertrade_deliver_address.group.reduce((acc, group) => {
+                    const cellData = Object.values(group).flatMap((innerArray: any) =>
+                        innerArray.map(cell => cell)
+                    ).find(cell => cell.cellType === 'address')
+
+                    const addressCell = cellData?.cellData.find(cell => cell.tag === "address");
+
+                    return addressCell ? addressCell.fields.value : acc;
+                }, null);
+
+                switch (true) {
+                    case (/新西南国际/.test(addressValue)): {
+                        port.postMessage({ msg_action: 'is_nswex_freight_processed', db_data, first_query } as PostMessageData)
+                        break;
+                    }
+                    case (/穆院鑫玖电创.*ML\d+#\w+/.test(addressValue)): {
+                        port.postMessage({ msg_action: 'is_mulupost_freight_processed', db_data, first_query } as PostMessageData)
+                        break;
+                    };
+                    default:
+                }
+
                 first_query = false;
             }
 

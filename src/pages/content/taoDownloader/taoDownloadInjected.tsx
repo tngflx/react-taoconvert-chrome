@@ -25,31 +25,8 @@ export async function taoDownloader() {
         exParams[key] = queryParams.get(key);
     });
 
-    const [h5api_data, remapped_review_data] = await Promise.allSettled([
-        new Promise((resolve) => {
-
-            let url_param_data = {
-                "id": queryParams.get("id"),
-                "detail_v": "3.3.2",
-                "exParams": JSON.stringify({
-                    ...exParams,
-                    queryString,
-                    domain,
-                    path_name: pathname
-                })
-            };
-
-            //resolve({ data: 'ds' })
-            chrome.runtime.sendMessage({ msg_action: 'get_itempage_products', url_param_data }, h5api_data => {
-                resolve(h5api_data)
-            })
-        }),
-        processReviewTab()
-    ])
-
-    if (h5api_data.status === 'fulfilled') {
-        /**
-        * example of json data returned by h5api
+    /**
+        * example of json h5api_data
         * "skuBase.skus": [
                 {
                     "propPath": "1627207:30146346867;20122:368194910;20105:103646",
@@ -94,6 +71,30 @@ export async function taoDownloader() {
                     "quantityText": "无货"
                 },
         */
+    const [h5api_data, remapped_review_data] = await Promise.allSettled([
+
+        new Promise((resolve) => {
+
+            let url_param_data = {
+                "id": queryParams.get("id"),
+                "detail_v": "3.3.2",
+                "exParams": JSON.stringify({
+                    ...exParams,
+                    queryString,
+                    domain,
+                    path_name: pathname
+                })
+            };
+
+            //resolve({ data: 'ds' })
+            chrome.runtime.sendMessage({ msg_action: 'get_itempage_products', url_param_data }, h5api_data => {
+                resolve(h5api_data)
+            })
+        }),
+        processReviewTab()
+    ])
+
+    if (h5api_data.status === 'fulfilled') {
         const { data: { skuBase, skuCore } } = h5api_data.value as { data: any };
 
         function matchSkuBase(to_match_pid, to_match_vid, option: "inner" | "outer") {
@@ -101,11 +102,6 @@ export async function taoDownloader() {
                 return skuBase.props.find((p) => p.pid === to_match_pid)?.values?.find((v) => v.vid === to_match_vid)
             else if (option == "outer")
                 return skuBase.props.find((p) => p.pid === to_match_pid)
-        }
-        interface GroupedKey {
-            main_product_title: string;
-            category: Record<string, any>;
-            image: string;
         }
 
         const remapped_skubase_data = skuBase.skus.reduce((groupedMap, { propPath, skuId }) => {
@@ -143,6 +139,27 @@ export async function taoDownloader() {
                 existingEntry.values[combined_key.slice(0, -1)] = [price?.priceText, quantity];
             }
 
+            /**
+             * Example returned groupedMap data
+             * {
+                  "product": {
+                    "image": "https://gw.alicdn.com/bao/uploaded/i1/3372205069/O1CN01CZaxn71nJeaWpu1xt_!!3372205069.jpg",
+                    "main_product_title": "幻14经典灰-R7-6800HS/RX-6700S/2K/120Hz/14英寸",
+                    "values": [
+                      {
+                        "1T固态硬盘/16GB":['6499', '5']
+                      },
+                      {
+                        "1T固态硬盘/24GB":['6899', '3']
+                      },
+                      {
+                        "1T固态硬盘/40GB":['7599', '5']
+                      }
+                    ]
+                  }
+                }
+
+             */
             return groupedMap;
 
         }, []);

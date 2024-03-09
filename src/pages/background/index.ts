@@ -2,6 +2,7 @@ import reloadOnUpdate from 'virtual:reload-on-update-in-background-script';
 import 'webextension-polyfill';
 import { idb } from '../../shared/storages/indexDB';
 import { queryBuilder } from './apiQueryBuilder';
+import { MulupostStatusChecker, NSWEXStatusChecker } from './freightStatusHandler';
 
 reloadOnUpdate('pages/background');
 
@@ -17,24 +18,23 @@ interface TrackingInfo {
 
 /**
  * One-time chrome message listener and short-lived
+ * each case get its own destructured request due to race condition
  */
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     switch (request?.msg_action) {
         case 'get_buyertrade_tracking_code':
             chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
-                // Extract the necessary cookies from the cookies array
                 const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
 
                 const apiUrl = `https://buyertrade.taobao.com/trade/json/transit_step.do?bizOrderId=${request.orderId}`
 
-                // Make a request to the internal API with the extracted cookies
                 fetch(apiUrl, {
-                    method: "GET",  // or "POST" depending on your API
+                    method: "GET", 
                     headers: {
                         "Cookie": cookieString,
                         "Accept": "application/json",
                     },
-                    // Add any other options or parameters required by your API
                 })
                     .then(response => response.arrayBuffer())
                     .then(async data => {
@@ -59,15 +59,13 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         case 'get_itempage_products': {
             const { url_param_data } = request;
 
-            chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
-                const _queryBuilder = new queryBuilder(cookies, url_param_data)
-                _queryBuilder.fetchTaoItemPage()
-                    .then(res => {
-                        sendResponse(res)
-                    }).catch(e => {
-                        sendResponse(e)
-                    })
-            });
+            const _queryBuilder = new queryBuilder(url_param_data)
+            _queryBuilder.fetchTaoItemPage()
+                .then(res => {
+                    sendResponse(res)
+                }).catch(e => {
+                    sendResponse(e)
+                })
             break;
         }
 
@@ -75,15 +73,28 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
             const { url_param_data } = request;
 
-            chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
-                const _queryBuilder = new queryBuilder(cookies, url_param_data)
-                _queryBuilder.fetchTaoReviewPage()
+            const _queryBuilder = new queryBuilder(url_param_data)
+            _queryBuilder.fetchTaoReviewPage()
+                .then(res => {
+                    sendResponse(res)
+                }).catch(e => {
+                    sendResponse(e)
+                })
+            break;
+        }
+        case 'get_itempage_products_moredetails': {
+            // Mainly to get address of product
+            const { orderId } = request;
+            let change_param_data = { "source": 1, "bizOrderId": orderId, "requestIdentity": "#t#ip##_h5_web_default", "appName": "tborder", "appVersion": "3.0" }
+
+                const _queryBuilder = new queryBuilder(change_param_data)
+                _queryBuilder.fetchMoreItemDetails()
                     .then(res => {
                         sendResponse(res)
                     }).catch(e => {
                         sendResponse(e)
                     })
-            });
+
             break;
         }
 
@@ -107,15 +118,29 @@ chrome.runtime.onConnect.addListener((port) => {
         port.onMessage.addListener(async (resp) => {
             const { msg_action, db_data, first_query } = resp;
             const { orderId, buyertrade_tracking_info, ...rest } = db_data
-            switch (msg_action) {
-                case 'get_tracking_info':
 
-                case 'is_freight_processed':
+            switch (msg_action) {
+                case 'is_mulupost_freight_processed': {
+                    const muluFreight = new MulupostStatusChecker()
+                    const mulu_html = await muluFreight.fetchMuluStatus('search', buyertrade_tracking_info?.expressId)
+
+                    resp.freight_html = {
+                        mulu_html
+                    };
+
+                    delete resp.msg_action;
+
+                    port.postMessage({ msg_action: "process_mulupost_freight_html", ...resp })
+                    break;
+                }
+
+                case 'is_nswex_freight_processed': {
+                    const nswexFreight = new NSWEXStatusChecker()
                     if (first_query) {
                         const [delivery_html, ontheway_html, arrived_html] = await Promise.all([
-                            checkFreightIfTrackingExists('delivery_info', buyertrade_tracking_info?.expressId),
-                            checkFreightIfTrackingExists('ontheway_info'),
-                            checkFreightIfTrackingExists('arrived_info')
+                            nswexFreight.checkFreightStatus('delivery_info', buyertrade_tracking_info?.expressId),
+                            nswexFreight.checkFreightStatus('ontheway_info'),
+                            nswexFreight.checkFreightStatus('arrived_info')
                         ])
 
                         resp.freight_html = {
@@ -125,66 +150,22 @@ chrome.runtime.onConnect.addListener((port) => {
                         };
                     } else {
                         resp.freight_html = {
-                            delivery_html: await checkFreightIfTrackingExists('delivery_info', buyertrade_tracking_info?.expressId)
+                            delivery_html: await nswexFreight.checkFreightStatus('delivery_info', buyertrade_tracking_info?.expressId)
                         };
                     }
 
                     delete resp.msg_action; //Bug in chrome where msg_action will stuck on previous call
 
-                    port.postMessage({ msg_action: "process_freight_html", ...resp })
+                    port.postMessage({ msg_action: "process_nswex_freight_html", ...resp })
                     break;
-
-                case 'save_db':
+                }
+                case 'save_db': {
                     idb.add({ orderId, ...db_data })
                     break;
+                }
                 default:
             }
         });
     }
 });
-
-
-function checkFreightIfTrackingExists(options: string, expressId?: Object) {
-    let url: string;
-
-    // Needed as 
-    switch (options) {
-        case 'arrived_info':
-            url = 'https://nswex.com/index.php?route=account/order_product&filter_order_product_status=4'
-            break;
-        case 'delivery_info':
-            url = `https://nswex.com/index.php?route=account/order&filter_tracking_number=${expressId}`
-            break;
-        case 'ontheway_info':
-            url = 'https://nswex.com/index.php?route=account/order_product&filter_order_product_status=3'
-            break;
-        default:
-    }
-
-    const headers = {
-        "Accept": "text/html",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-    };
-
-    const fetchOptions: RequestInit = {
-        method: "GET",
-        mode: "cors",
-        credentials: "include" as RequestCredentials,
-        headers
-    };
-
-    return fetch(url, fetchOptions)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.text();
-        })
-        .catch(error => {
-            // Handle errors here
-            console.error("Fetch error:", error);
-        });
-
-}
 
