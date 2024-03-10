@@ -32,7 +32,7 @@ const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
 
 
 port.onMessage.addListener(async (resp) => {
-    const { msg_action, db_data, freight_html, freight_otw_arrive_data } = resp;
+    const { msg_action, db_data, freight_html, freight_props_savelater_data } = resp;
     const { buyertrade_tracking_info } = db_data
     const parser = new DOMParser();
 
@@ -49,28 +49,33 @@ port.onMessage.addListener(async (resp) => {
             }, []);
 
             const freightProps: { [key: string]: string } = {
+                company: 'Mulupost',
                 tracking_code: mulu_doc.querySelector('.relative.panel .panel-hd .text-primary').textContent,
-                delivery_status_tracklink: mulu_doc.querySelector('.panel-ft a.btn-primary[href]')?.href,
+                delivery_status_tracklink: mulu_doc.querySelector('.panel-ft a.btn-primary[href]')?.getAttribute('href'),
                 date_added: freight_infos[7].value,
             }
             switch (true) {
-                case (/包裹运输中/g.test(freight_infos[7].value)):
+                case (/包裹运输中/g.test(freight_infos[1].value)):
                     freightProps["delivery_status"] = 'delivery'
                     break;
-                case (/运输完成/g.test(freight_infos[7].value)):
+                case (/运输完成/g.test(freight_infos[1].value)):
                     freightProps["delivery_status"] = 'completed'
                     break;
-                case (/签收入库/g.test(freight_infos[7].value)):
+                case (/签收入库/g.test(freight_infos[1].value)):
                     freightProps["delivery_status"] = 'arrived'
                     break;
-                case (/发货运输/g.test(freight_infos[7].value)):
+                case (/发货运输/g.test(freight_infos[1].value)):
                     freightProps["delivery_status"] = 'on the way'
+                    break;
+                case ((freight_html.mulu_html as string)?.includes('not found')):
+                    freightProps["delivery_status"] = 'none'
                     break;
                 default:
             }
+            db_data.freight_delivery_data = freightProps;
 
             port.postMessage({ msg_action: 'save_db', db_data })
-
+            console.log({ ...db_data }, 'mulupost')
             break;
         }
         case 'process_nswex_freight_html': {
@@ -106,7 +111,8 @@ port.onMessage.addListener(async (resp) => {
                 if (table_search_result_columns_els?.length > 0) {
                     const commonIndex = source_html_name == 'delivery' ? 1 : 3
 
-                    const freightProps: { [key: string]: string } = {
+                    const freight_props_template: { [key: string]: string } = {
+                        company: 'NSWEX',
                         tracking_code: table_search_result_columns_els[commonIndex].querySelector('.text-nowrap')?.firstChild.textContent,
                         delivery_status_tracklink: table_search_result_columns_els[commonIndex].querySelector('a.agree')?.getAttribute('href'),
                         date_added: table_search_result_columns_els[commonIndex == 1 ? commonIndex + 2 : commonIndex + 7].textContent,
@@ -116,27 +122,28 @@ port.onMessage.addListener(async (resp) => {
                             table_search_result_columns_els[commonIndex + 6].querySelector('span#order_product_status')?.textContent
                     }
 
-                    const restructured_objs = Object.fromEntries(
-                        (Object.entries(freightProps) as [string, string][])
+                    const freight_props = Object.fromEntries(
+                        (Object.entries(freight_props_template) as [string, string][])
                             // Trimming and replace newline
                             .map(([key, value]) => [key, typeof (value) === 'string' ? value.trim().replace(/\n/g, '') : null])
                             // Filter out undefined/null/empty value
                             .filter(([, value]) => value && value !== '')
                     ) as { [key: string]: string };
 
+                    // If source_html_name is otw, arrive
                     if (source_html_name !== 'delivery') {
                         //If the current iteration of arrived/otw html have the same current processing expressId
-                        //can return straight
-                        if (freightProps?.tracking_code === buyertrade_tracking_info?.expressId) {
-                            db_data.freight_delivery_data = db_data?.freight_otw_arrive_data || restructured_objs;
+                        //can just use back freight_props_savelater_data
+                        if (freight_props_template?.tracking_code === buyertrade_tracking_info?.expressId) {
+                            db_data.freight_delivery_data = resp?.freight_props_savelater_data || freight_props;
                         } else {
-                            resp.freight_otw_arrive_data = restructured_objs;
+                            resp.freight_props_savelater_data = freight_props;
                         }
                     } else if (source_html_name === 'delivery') {
-                        if (freight_otw_arrive_data && freight_otw_arrive_data?.tracking_code === buyertrade_tracking_info?.expressId) {
-                            db_data.freight_delivery_data = freight_otw_arrive_data
+                        if (freight_props_savelater_data && freight_props_savelater_data?.tracking_code === buyertrade_tracking_info?.expressId) {
+                            db_data.freight_delivery_data = freight_props_savelater_data
                         } else
-                            db_data.freight_delivery_data = restructured_objs;
+                            db_data.freight_delivery_data = freight_props;
                     }
                 } else if (text_search_result_el === "You have not made any previous orders!") {
                     db_data.freight_delivery_data = Object.assign({}, db_data.freight_delivery_data, { delivery_status: "none" });
@@ -151,7 +158,7 @@ port.onMessage.addListener(async (resp) => {
             delete resp.msg_action; // Fixes bug where previous msg_action obj stuck with a new chromeapi postmessage call
 
             port.postMessage({ msg_action: 'save_db', db_data })
-            console.log({ ...db_data })
+            console.log({ ...db_data }, 'nswex')
             break;
         }
         default:

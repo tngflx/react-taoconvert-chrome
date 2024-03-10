@@ -26,6 +26,7 @@ interface ProductData {
     product_create_date: string;
     buyertrade_tracking_info: TrackingInfo; // or replace with a specific type for tracking_info
     freight_delivery_data: {
+        company: string;
         tracking_code: string;
         delivery_status_tracklink: string;
         date_added: string;

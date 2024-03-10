@@ -2,6 +2,7 @@
 import { ImpProdContext } from '../../tabs/impProdContextProvider';
 import { CircularButton } from './circularButton';
 import { HoverArrow } from './hoverArrowLogics';
+import { c } from 'vitest/dist/reporters-5f784f42';
 
 const Footer = ({ clearListHandler, RestoreListHandler }) => {
     return (
@@ -16,7 +17,7 @@ const Footer = ({ clearListHandler, RestoreListHandler }) => {
     );
 };
 
-const DeliveryStatusIndicator = ({ deliveryStatus }) => {
+const statusesIndicator = ({ deliveryStatus, company }) => {
     const statusColors = {
         none: 'bg-red-500',
         'arrived': 'bg-purple-500 text-white',
@@ -26,12 +27,24 @@ const DeliveryStatusIndicator = ({ deliveryStatus }) => {
         delivery: 'bg-green-500 text-white',
     };
 
-    const bgColorClass = statusColors[deliveryStatus.toLowerCase()] || 'bg-gray-500';
+    const companyColors = {
+        mulupost: 'bg-indigo-700',
+        nswex: 'bg-lime-700',
+    };
+
+    const statusBgColorClass = statusColors[deliveryStatus.toLowerCase()] || 'bg-gray-500';
+    const companyBgColorClass = companyColors[company.toLowerCase()] || 'bg-gray-500';
 
     return (
-        <span className={`status-indicator p-1.5 rounded-full text-center ${bgColorClass}`}>
-            {deliveryStatus === 'none' ? 'New Entry' : deliveryStatus}
-        </span>
+        <div className="flex space-x-4">
+            <span className={`status-indicator p-1.5 rounded-full text-center ${statusBgColorClass}`}>
+                {deliveryStatus === 'none' ? 'New Entry' : deliveryStatus}
+            </span>
+
+            <span className={`status-indicator p-1.5 rounded-full text-center ${companyBgColorClass}`}>
+                {company}
+            </span>
+        </div>
     );
 };
 
@@ -59,6 +72,7 @@ export const ImportedProducts = () => {
                                 product_create_date,
                                 buyertrade_tracking_info: { expressId, expressName },
                                 freight_delivery_data: {
+                                    company,
                                     tracking_code,
                                     delivery_status_tracklink,
                                     date_added,
@@ -71,13 +85,14 @@ export const ImportedProducts = () => {
                                     <div className="flex min-w-0 gap-x-4 h-full">
                                         <div className="image_and_status flex w-20 flex-col items-center">
                                             <img className="h-12 w-12 bg-gray-500 mb-2" src={product_image_url} alt="" />
-                                            <DeliveryStatusIndicator deliveryStatus={delivery_status} />
+                                            <statusesIndicator deliveryStatus={delivery_status} company={company} />
                                         </div>
                                         <div className="description min-w-0 flex-auto overflow-visible group relative" onMouseOver={() => setSuccessEntry(null)}>
                                             <p className="text-sm font-semibold leading-6 text-white-900 z-10 relative">
                                                 {product_main_title}
                                             </p>
                                             <p className="mb-2 text-xs leading-5 text-white-900 z-10 relative">{selected_product_variant}</p>
+                                            <span className="bg-blue-400 text-white p-1.5 rounded-full text-center z-2 relative">{company}</span>
                                             {expressId && (
                                                 <span className="bg-blue-400 text-white p-1.5 rounded-full text-center z-2 relative">{`${expressName}: ${expressId}`}</span>
                                             )}
