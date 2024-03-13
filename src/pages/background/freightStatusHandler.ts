@@ -34,29 +34,52 @@ abstract class BaseFreightStatusChecker {
                 console.error("Fetch error:", error);
             });
     }
-
-    public checkFreightStatus(options: string, expressId?: string): Promise<string | void> {
-        const url = this.buildUrl(options, expressId);
-        return this.fetchFreight(url);
-    }
 }
 
-export class NSWEXStatusChecker extends BaseFreightStatusChecker {
+export enum NswexFreightStatusType {
+    ARRIVED_INFO = 'arrived_info',
+    DELIVERY_INFO = 'delivery_info',
+    ON_THE_WAY_INFO = 'ontheway_info',
+    REDIVE_INFO = 'refetch_info'
+}
+
+const typeUrlMapping: Record<NswexFreightStatusType, string> = {
+    [NswexFreightStatusType.ARRIVED_INFO]: 'order_product&filter_order_product_status=4',
+    [NswexFreightStatusType.DELIVERY_INFO]: 'order&filter_tracking_number=',
+    [NswexFreightStatusType.ON_THE_WAY_INFO]: 'order_product&filter_order_product_status=3',
+    [NswexFreightStatusType.REDIVE_INFO]: 'order/info&order_id='
+};
+export class NswexStatusChecker extends BaseFreightStatusChecker {
     protected getBaseUrl(): string {
         return 'https://nswex.com/index.php?route=account/';
     }
 
-    protected buildUrl(options: string, expressId?: string): string {
-        switch (options) {
-            case 'arrived_info':
-                return this.baseUrl + 'order_product&filter_order_product_status=4';
-            case 'delivery_info':
-                return this.baseUrl + `order&filter_tracking_number=${expressId}`;
-            case 'ontheway_info':
-                return this.baseUrl + 'order_product&filter_order_product_status=3';
-            default:
-                throw new Error('Invalid option');
+    protected buildUrl(type: NswexFreightStatusType, express_id?: string, nswex_order_id?: string) {
+        const suffix = typeUrlMapping[type];
+        if (suffix === undefined) {
+            throw new Error('Invalid option');
         }
+
+        switch (type) {
+            case NswexFreightStatusType.DELIVERY_INFO:
+                if (!express_id) {
+                    throw new Error('Express ID is required for delivery info');
+                }
+                return this.baseUrl + suffix + express_id;
+            case NswexFreightStatusType.REDIVE_INFO:
+                if (!nswex_order_id) {
+                    throw new Error('Order ID is required for refetch info');
+                }
+                return this.baseUrl + suffix + nswex_order_id;
+            default:
+                return this.baseUrl + suffix;
+        }
+    }
+
+    public checkStatus(options: { type: NswexFreightStatusType, express_id?: string, nswex_order_id?: string }): Promise<string | void> {
+        const { express_id, nswex_order_id, type } = options;
+        const url = this.buildUrl(type, express_id, nswex_order_id);
+        return this.fetchFreight(url);
     }
 }
 

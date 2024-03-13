@@ -2,7 +2,7 @@ import reloadOnUpdate from 'virtual:reload-on-update-in-background-script';
 import 'webextension-polyfill';
 import { idb } from '../../shared/storages/indexDB';
 import { queryBuilder } from './apiQueryBuilder';
-import { MulupostStatusChecker, NSWEXStatusChecker } from './freightStatusHandler';
+import { MulupostStatusChecker, NswexFreightStatusType, NswexStatusChecker } from './freightStatusHandler';
 
 reloadOnUpdate('pages/background');
 
@@ -30,7 +30,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 const apiUrl = `https://buyertrade.taobao.com/trade/json/transit_step.do?bizOrderId=${request.orderId}`
 
                 fetch(apiUrl, {
-                    method: "GET", 
+                    method: "GET",
                     headers: {
                         "Cookie": cookieString,
                         "Accept": "application/json",
@@ -87,13 +87,13 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             const { orderId } = request;
             let change_param_data = { "source": 1, "bizOrderId": orderId, "requestIdentity": "#t#ip##_h5_web_default", "appName": "tborder", "appVersion": "3.0" }
 
-                const _queryBuilder = new queryBuilder(change_param_data)
-                _queryBuilder.fetchMoreItemDetails()
-                    .then(res => {
-                        sendResponse(res)
-                    }).catch(e => {
-                        sendResponse(e)
-                    })
+            const _queryBuilder = new queryBuilder(change_param_data)
+            _queryBuilder.fetchMoreItemDetails()
+                .then(res => {
+                    sendResponse(res)
+                }).catch(e => {
+                    sendResponse(e)
+                })
 
             break;
         }
@@ -118,11 +118,23 @@ chrome.runtime.onConnect.addListener((port) => {
         port.onMessage.addListener(async (resp) => {
             const { msg_action, db_data, first_query } = resp;
             const { orderId, buyertrade_tracking_info, ...rest } = db_data
+            const [postprocess, post_msg] = msg_action.split(':')
+            const nswexFreight = new NswexStatusChecker()
+
+            if (postprocess) {
+                switch (post_msg) {
+                    case 'redive_endpoint':
+                        resp.freight_html = {
+                            redive_html: await nswexFreight.checkStatus({ type: NswexFreightStatusType.REDIVE_INFO, nswex_order_id: orderId })
+                        };
+                        break;
+                }
+            }
 
             switch (msg_action) {
                 case 'is_mulupost_freight_processed': {
                     const muluFreight = new MulupostStatusChecker()
-                    const mulu_html = await muluFreight.fetchMuluStatus('search', buyertrade_tracking_info?.expressId)
+                    const mulu_html = await muluFreight.checkStatus('search', buyertrade_tracking_info?.expressId)
 
                     resp.freight_html = {
                         mulu_html
@@ -135,12 +147,11 @@ chrome.runtime.onConnect.addListener((port) => {
                 }
 
                 case 'is_nswex_freight_processed': {
-                    const nswexFreight = new NSWEXStatusChecker()
                     if (first_query) {
                         const [delivery_html, ontheway_html, arrived_html] = await Promise.all([
-                            nswexFreight.checkFreightStatus('delivery_info', buyertrade_tracking_info?.expressId),
-                            nswexFreight.checkFreightStatus('ontheway_info'),
-                            nswexFreight.checkFreightStatus('arrived_info')
+                            nswexFreight.checkStatus({ type: NswexFreightStatusType.DELIVERY_INFO, express_id: buyertrade_tracking_info?.expressId }),
+                            nswexFreight.checkStatus({ type: NswexFreightStatusType.ON_THE_WAY_INFO }),
+                            nswexFreight.checkStatus({ type: NswexFreightStatusType.ARRIVED_INFO })
                         ])
 
                         resp.freight_html = {
@@ -150,7 +161,7 @@ chrome.runtime.onConnect.addListener((port) => {
                         };
                     } else {
                         resp.freight_html = {
-                            delivery_html: await nswexFreight.checkFreightStatus('delivery_info', buyertrade_tracking_info?.expressId)
+                            delivery_html: await nswexFreight.checkStatus({ type: NswexFreightStatusType.DELIVERY_INFO, express_id: buyertrade_tracking_info?.expressId })
                         };
                     }
 

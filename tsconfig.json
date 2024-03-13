@@ -25,5 +25,5 @@
     "typeRoots": [ "./src/global.d.ts", "node_modules/@types" ],
     "types": [ "vite/client", "node" ]
   },
-  "include": ["src", "utils", "vite.config.ts", "node_modules/@types"]
+  "include": [ "src", "utils", "vite.config.ts", "node_modules/@types" ]
 }

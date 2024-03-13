@@ -16,8 +16,12 @@ const Footer = ({ clearListHandler, RestoreListHandler }) => {
         </div>
     );
 };
+interface StatusIndicatorsProps {
+    deliveryStatus?: string;
+    company?: string;
+}
 
-const statusesIndicator = ({ deliveryStatus, company }) => {
+const StatusIndicators: React.FC<StatusIndicatorsProps> = ({ deliveryStatus, company }) => {
     const statusColors = {
         none: 'bg-red-500',
         'arrived': 'bg-purple-500 text-white',
@@ -28,23 +32,26 @@ const statusesIndicator = ({ deliveryStatus, company }) => {
     };
 
     const companyColors = {
-        mulupost: 'bg-indigo-700',
-        nswex: 'bg-lime-700',
+        mulupost: 'bg-indigo-400',
+        nswex: 'bg-lime-400',
     };
 
-    const statusBgColorClass = statusColors[deliveryStatus.toLowerCase()] || 'bg-gray-500';
-    const companyBgColorClass = companyColors[company.toLowerCase()] || 'bg-gray-500';
+    const statusBgColorClass = statusColors[deliveryStatus?.toLowerCase()] || 'bg-gray-500';
+    const companyBgColorClass = companyColors[company?.toLowerCase()] || 'bg-gray-500';
 
     return (
-        <div className="flex space-x-4">
-            <span className={`status-indicator p-1.5 rounded-full text-center ${statusBgColorClass}`}>
-                {deliveryStatus === 'none' ? 'New Entry' : deliveryStatus}
-            </span>
-
-            <span className={`status-indicator p-1.5 rounded-full text-center ${companyBgColorClass}`}>
-                {company}
-            </span>
-        </div>
+        <>
+            {deliveryStatus && (
+                <span className={`status-indicator p-1.5 rounded-full text-center ${statusBgColorClass}`}>
+                    {deliveryStatus === 'none' ? 'New Entry' : deliveryStatus}
+                </span>
+            )}
+            {company && (
+                <span className={`status-indicator p-1.5 rounded-full text-center ${companyBgColorClass}`}>
+                    {company}
+                </span>
+            )}
+        </>
     );
 };
 
@@ -85,14 +92,14 @@ export const ImportedProducts = () => {
                                     <div className="flex min-w-0 gap-x-4 h-full">
                                         <div className="image_and_status flex w-20 flex-col items-center">
                                             <img className="h-12 w-12 bg-gray-500 mb-2" src={product_image_url} alt="" />
-                                            <statusesIndicator deliveryStatus={delivery_status} company={company} />
+                                            <StatusIndicators deliveryStatus={delivery_status} />
                                         </div>
-                                        <div className="description min-w-0 flex-auto overflow-visible group relative" onMouseOver={() => setSuccessEntry(null)}>
+                                        <div className="description min-w-0 flex-row overflow-visible group relative" onMouseOver={() => setSuccessEntry(null)}>
                                             <p className="text-sm font-semibold leading-6 text-white-900 z-10 relative">
                                                 {product_main_title}
                                             </p>
-                                            <p className="mb-2 text-xs leading-5 text-white-900 z-10 relative">{selected_product_variant}</p>
-                                            <span className="bg-blue-400 text-white p-1.5 rounded-full text-center z-2 relative">{company}</span>
+                                            <p className="mb-2 text-xs leading-5 text-white-900 z-10 relative space-x-2">{selected_product_variant}</p>
+                                            <StatusIndicators company={company} />
                                             {expressId && (
                                                 <span className="bg-blue-400 text-white p-1.5 rounded-full text-center z-2 relative">{`${expressName}: ${expressId}`}</span>
                                             )}
