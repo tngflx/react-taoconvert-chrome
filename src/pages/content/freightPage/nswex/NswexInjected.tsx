@@ -1,4 +1,7 @@
-﻿chrome.runtime.onConnect.addListener(function (port) {
+﻿// Inform the background script that the content script has loaded
+chrome.runtime.sendMessage({ msg_action: 'nswex:script_loaded' });
+
+chrome.runtime.onConnect.addListener(function (port) {
     port.onMessage.addListener(request => {
         if (request.msg_action === 'nswex_fill_form') {
             const {
@@ -61,7 +64,7 @@
                 { isEveryInputFilledFlag: false, isEveryInputSameFlag: false },
             );
 
-            chrome.runtime.sendMessage({ msg_action: 'update_hoverarrow', isEveryInputFilledFlag, isEveryInputSameFlag })
+            chrome.runtime.sendMessage({ msg_action: 'nswex:update_hoverarrow', isEveryInputFilledFlag, isEveryInputSameFlag })
 
             if (!isEveryInputFilledFlag) {
                 const { input_elements_toinsert_template, all_input_els_per_row, freight_select_el_per_row } = getRowElements(

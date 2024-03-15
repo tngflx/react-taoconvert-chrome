@@ -39,6 +39,8 @@ const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
  * "wait for deliver": do not have tracking code prepared
  * "wait for payment": not sure
  */
+const freight_props_savelater_data = [];
+
 port.onMessage.addListener(async (resp) => {
     const { msg_action, db_data, freight_html } = resp;
     const { buyertrade_tracking_info } = db_data
@@ -88,20 +90,43 @@ port.onMessage.addListener(async (resp) => {
             break;
         }
         case 'process_nswex_freight_html': {
-            const { delivery_html, ontheway_html, arrived_html } = Object.entries(freight_html).reduce((acc, [key, values]) =>
-                (acc[key] = parser.parseFromString(values as string, 'text/html'), acc)
-                , {}) as { delivery_html: Document, ontheway_html: Document, arrived_html: Document };
+            type DeliveryHtmlProps<T> = {
+                delivery_html_raw: T
+                delivery_html_tcode: string | null;
+            }
+
+            const { delivery_html, ontheway_html, arrived_html } = Object.entries(freight_html).reduce((acc, [key, values]) => {
+                if (key === 'delivery_html' && typeof values === 'object' && values !== null) {
+                    const { delivery_html_raw, delivery_html_tcode } = values as DeliveryHtmlProps<string>;
+                    acc[key] = {
+                        delivery_html_raw: delivery_html_raw ? parser.parseFromString(delivery_html_raw, 'text/html') : null,
+                        delivery_html_tcode: delivery_html_tcode ?? ''
+                    };
+                } else {
+                    acc[key] = parser.parseFromString(values as string, 'text/html');
+                }
+                return acc;
+            }, {} as {
+                delivery_html: DeliveryHtmlProps<Document>,
+                ontheway_html: Document,
+                arrived_html: Document
+            });
+
+            const { delivery_html_raw, delivery_html_tcode } = delivery_html;
 
             if (ontheway_html && arrived_html) {
                 processHTML(ontheway_html, 'ontheway');
                 processHTML(arrived_html, 'arrived');
+                processHTML(delivery_html_raw, 'delivery');
             } else {
-                processHTML(delivery_html, 'delivery');
+                processHTML(delivery_html_raw, 'delivery');
             }
 
 
             function processHTML(html_dom_element, source_html_name) {
-                const { freight_props_savelater_data } = resp;
+                const is_not_empty_array_freight_savelater_data = Array.isArray(freight_props_savelater_data) && freight_props_savelater_data.length > 0;
+                const get_same_tcode_savelaterdata = is_not_empty_array_freight_savelater_data && freight_props_savelater_data.find(data => data.tracking_code === buyertrade_tracking_info?.expressId)
+
                 // freight_tracking_el is el for search result tracking code on freight
                 const nswex_search_panel = html_dom_element.querySelector('div[class="panel panel-default"]') as HTMLElement
 
@@ -112,8 +137,6 @@ port.onMessage.addListener(async (resp) => {
                         : next_sibiling
                 const text_search_result_el = nextnextsib_or_not_el?.tagName.toLowerCase() === 'p' ? nextnextsib_or_not_el?.textContent : null
                 const table_search_result_column_el = findChildThenParentElbyClassName(nswex_search_panel, 'table-bordered', 'table')
-
-                const table_search_result_columns_els = table_search_result_column_el?.querySelectorAll('tbody td')
 
                 if (table_search_result_column_el) {
                     const table_header = Array.from(table_search_result_column_el?.querySelectorAll('thead td')).map((td) => {
@@ -126,77 +149,100 @@ port.onMessage.addListener(async (resp) => {
 
                     });
 
-                    const table_values = Array.from(table_search_result_column_el.querySelectorAll('tbody tr')).map(tr =>
-                        Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
+                    const table_tbody_values = Array.from(table_search_result_column_el.querySelectorAll('tbody tr')).map(tr =>
+                        Array.from(tr.querySelectorAll('td'))
                     );
 
-                    const mapped_thead_tbody_data = table_header.reduce((acc, key, index) => {
-                        const td = table_values.map(row => row[index]);
+                    const mapped_thead_tbody_data = table_tbody_values.reduce((acc, tbody_value) => {
+                        const rowData = {};
 
-                        switch (key) {
-                            case 'tracking_number':
-                                acc[key] = td[index]?.querySelector('.text-nowrap')?.firstChild?.textContent;
-                                break;
-                            case 'delivery_order_status':
-                                acc[key] = td[index]?.querySelector('span.order_status')?.textContent || td[index]?.querySelector('span#order_product_status')?.textContent;
-                                break;
-                            default:
-                                acc[key] = td[index];
-                                break;
-                        }
-                        return acc;
-                    }, {});
+                        table_header.forEach((key, thead_index) => {
+                            switch (key) {
+                                case '':
+                                    break;
+                                case 'tracking_number':
+                                    rowData[key] = tbody_value[thead_index]?.querySelector('.text-nowrap')?.firstChild?.textContent
+                                    rowData['delivery_status_tracklink'] = tbody_value[thead_index]?.querySelector('a.agree')?.getAttribute('href');
+                                    break;
+                                case 'shipping_note':
+                                    rowData['delivery_status_tracklink'] = tbody_value[thead_index]?.querySelector('a.agree')?.getAttribute('href');
+                                    break;
+                                case 'delivery_order_status':
+                                    const status = tbody_value[thead_index]?.querySelector('span.order_status')?.textContent.trim().replace(/\n/g, '') || tbody_value[thead_index]?.querySelector('span#order_product_status')?.textContent.trim().replace(/\n/g, '');
+                                    status == 'completed' ? rowData[key] = 'Delivery' : rowData[key] = status;
+                                    break;
+                                case 'date_added':
+                                    rowData[key] = tbody_value[thead_index]?.textContent.trim().split(/\s+/)[0];
+                                    break;
+                                default:
+                                    rowData[key] = tbody_value[thead_index].textContent.trim();
+                                    break;
+                            }
+                        })
 
-
-                    const is_tracking_code_exists = Object.entries(mapped_thead_tbody_data).find(data => data[0] === 'tracking_number')
-                    //!is_tracking_code_exists && port.postMessage({ msg_action: 'postprocess:redive_endpoint' })
-
-                    const commonIndex = source_html_name == 'delivery' ? 1 : 3
-                    const freight_props_template: { [key: string]: string } = {
-                        company: 'NSWEX',
-                        tracking_code: mapped_thead_tbody_data['tracking_number'],
-                        delivery_status_tracklink: table_search_result_columns_els[commonIndex].querySelector('a.agree')?.getAttribute('href'),
-                        date_added: mapped_thead_tbody_data['date_added'],
-                        total_weight: mapped_thead_tbody_data['weight'],
-                        total_price: mapped_thead_tbody_data['total'],
-                        delivery_status: mapped_thead_tbody_data['delivery_order_status'] || mapped_thead_tbody_data['status']
-                    }
-
-                    const freight_props = Object.fromEntries(
-                        (Object.entries(freight_props_template) as [string, string][])
-                            // Trimming and replace newline
-                            .map(([key, value]) => [key, typeof (value) === 'string' ? value.trim().replace(/\n/g, '') : null])
-                            // Filter out undefined/null/empty value
-                            .filter(([, value]) => value && value !== '')
-                    ) as { [key: string]: string };
-                    console.log(freight_props, 'freight_props')
-
-                    const is_not_empty_array_freight_savelater_data = Array.isArray(freight_props_savelater_data) && freight_props_savelater_data.length > 0;
-                    const found_matching_savelater_tracking_code = is_not_empty_array_freight_savelater_data && freight_props_savelater_data.find(data => data.tracking_code === buyertrade_tracking_info?.expressId)
-                    const current_same_processing_t_code = freight_props_template?.tracking_code == buyertrade_tracking_info?.expressId
-
-                    // If source_html_name is otw, arrive
-                    if (source_html_name !== 'delivery') {
-                        //If the current iteration of arrived/otw html have the same current processing expressId
-                        //can just use back freight_props_savelater_data
-                        if (current_same_processing_t_code || found_matching_savelater_tracking_code) {
-                            db_data.freight_delivery_data = found_matching_savelater_tracking_code || freight_props;
-                        } else {
-                            // Push the new data to freight_props_savelater_data
-                            resp.freight_props_savelater_data = [];
-                            resp.freight_props_savelater_data.push(freight_props);
+                        if (!rowData.hasOwnProperty('tracking_number')) {
+                            // If tracking_number key is not found, force add it with tcode comes from delivery_html
+                            rowData['tracking_number'] = delivery_html_tcode;
                         }
 
-                    } else if (source_html_name === 'delivery') {
-                        if (current_same_processing_t_code || found_matching_savelater_tracking_code) {
-                            db_data.freight_delivery_data = found_matching_savelater_tracking_code || freight_props;
+                        return [...acc, rowData];
+                    }, [])
+                        // Further processing of the mapped_thead_tbody_data
+                        .map(({ product_name, status, price, ...rest }: {
+                            [key: string]: any
+                        }) => ({
+                            ...rest,
+                            product_name,
+                            price,
+                            status: product_name == '' && price == '-' && status == 'Arrived' ? status = 'Arrived:unregistered' : status
+                        }))
+
+                    mapped_thead_tbody_data.forEach(tbody_data => {
+                        const freight_props_template: { [key: string]: string } = {
+                            company: 'NSWEX',
+                            tracking_code: tbody_data['tracking_number'],
+                            delivery_status_tracklink: tbody_data['delivery_status_tracklink'],
+                            date_added: tbody_data['date_added'],
+                            total_weight: tbody_data['weight'],
+                            total_price: tbody_data['total'],
+                            delivery_status: tbody_data['delivery_order_status'] || tbody_data['status']
                         }
-                    }
+
+                        const refined_freight_props = Object.fromEntries(
+                            (Object.entries(freight_props_template) as [string, string][])
+                                // Trimming and replace newline
+                                .map(([key, value]) => [key, typeof (value) === 'string' ? value.trim().replace(/\n/g, '') : null])
+                                // Filter out undefined/null/empty value
+                                .filter(([, value]) => value && value !== '')
+                        ) as { [key: string]: string };
+
+
+                        const is_same_tcode_freightprops = refined_freight_props["tracking_code"] === buyertrade_tracking_info?.expressId;
+
+                        // If source_html_name is otw, arrive
+                        if (source_html_name !== 'delivery') {
+                            // If there's already data in freight_props_savelater_data, and the tracking code is the same as buyertrade_tracking_info.expressId
+                            // or the buyertrade.expressId is the same as the tracking_code in the delivery_html
+                            if (get_same_tcode_savelaterdata || is_same_tcode_freightprops) {
+                                db_data.freight_delivery_data = get_same_tcode_savelaterdata || refined_freight_props;
+                            } else {
+                                // Push the new data to freight_props_savelater_data
+                                freight_props_savelater_data.push(refined_freight_props);
+                            }
+
+                        } else if (source_html_name === 'delivery') {
+                            if (get_same_tcode_savelaterdata || is_same_tcode_freightprops) {
+                                db_data.freight_delivery_data = get_same_tcode_savelaterdata || refined_freight_props;
+                            }
+                        }
+                    })
                 } else if (text_search_result_el === "You have not made any previous orders!") {
-                    db_data.freight_delivery_data = Object.assign({}, db_data.freight_delivery_data, { delivery_status: "none" });
+                    if (get_same_tcode_savelaterdata) {
+                        db_data.freight_delivery_data = Object.assign({}, db_data.freight_delivery_data, get_same_tcode_savelaterdata)
+                    } else
+                        db_data.freight_delivery_data = Object.assign({}, db_data.freight_delivery_data, { company: 'NSWEX', delivery_status: "none" });
 
-                } else if (!text_search_result_el && !table_search_result_columns_els && source_html_name !== 'delivery') {
-                    processHTML(delivery_html, 'delivery')
+                    // When source_html_name is otw/arrive, and nothing found in them, try process delivery_html
                 }
             }
 
@@ -250,7 +296,7 @@ port.onMessage.addListener(async (resp) => {
 
             if (is_tracking_el_exists) {
                 const buyertrade_tracking_info = await new Promise<TrackingInfo>((resolve) => {
-                    chrome.runtime.sendMessage({ msg_action: "get_buyertrade_tracking_code", orderId }, (buyertrade_tracking_info) => {
+                    chrome.runtime.sendMessage({ msg_action: "buyertrade:get_buyertrade_tracking_code", orderId }, (buyertrade_tracking_info) => {
                         resolve(buyertrade_tracking_info);
                     });
                 })
@@ -277,7 +323,7 @@ port.onMessage.addListener(async (resp) => {
                  * non reusable are just like state, and not for permanent store to db
                  */
                 const buyertrade_extrainfo: { data: any } = await new Promise((resolve) => {
-                    chrome.runtime.sendMessage({ msg_action: "get_itempage_products_moredetails", orderId }, buyertrade_extra_info => {
+                    chrome.runtime.sendMessage({ msg_action: "buyertrade:get_itempage_products_moredetails", orderId }, buyertrade_extra_info => {
                         resolve(buyertrade_extra_info)
                     })
                 })
@@ -294,17 +340,18 @@ port.onMessage.addListener(async (resp) => {
 
                 switch (true) {
                     case (/新西南国际/.test(addressValue)): {
-                        port.postMessage({ msg_action: 'is_nswex_freight_processed', db_data, first_query } as PostMessageData)
+                        port.postMessage({ msg_action: 'buyertrade:is_nswex_freight_processed', db_data, first_query } as PostMessageData)
+                        first_query = false;
                         break;
                     }
                     case (/穆院鑫玖电创.*ML\d+#\w+/.test(addressValue)): {
-                        port.postMessage({ msg_action: 'is_mulupost_freight_processed', db_data, first_query } as PostMessageData)
+                        port.postMessage({ msg_action: 'buyertrade:is_mulupost_freight_processed', db_data, first_query } as PostMessageData)
+                        first_query = false;
                         break;
                     };
                     default:
                 }
 
-                first_query = false;
             }
 
         }

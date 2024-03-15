@@ -2,7 +2,6 @@
 import { ImpProdContext } from '../../tabs/impProdContextProvider';
 import { CircularButton } from './circularButton';
 import { HoverArrow } from './hoverArrowLogics';
-import { c } from 'vitest/dist/reporters-5f784f42';
 
 const Footer = ({ clearListHandler, RestoreListHandler }) => {
     return (
@@ -25,29 +24,31 @@ const StatusIndicators: React.FC<StatusIndicatorsProps> = ({ deliveryStatus, com
     const statusColors = {
         none: 'bg-red-500',
         'arrived': 'bg-purple-500 text-white',
-        'on the way': 'bg-yellow-300 text-black',
-        'wait to weight': 'bg-yellow-300 text-black',
-        'wait for deliver': 'bg-orange-500 text-white',
-        delivery: 'bg-green-500 text-white',
+        'on the way': 'bg-violet-500 text-black',
+        'wait to weight': 'bg-violet-500 text-white',
+        'wait for payment': 'bg-red-300 text-black',
+        'wait for deliver': 'bg-violet-500 text-white',
+        delivery: 'bg-emerald-500 text-white',
     };
 
     const companyColors = {
-        mulupost: 'bg-indigo-400',
+        mulupost: 'bg-indigo-300',
         nswex: 'bg-lime-400',
     };
 
-    const statusBgColorClass = statusColors[deliveryStatus?.toLowerCase()] || 'bg-gray-500';
-    const companyBgColorClass = companyColors[company?.toLowerCase()] || 'bg-gray-500';
+    const matchedStatus = Object.keys(statusColors).find((key) => deliveryStatus?.toLowerCase()?.includes(key));
+    const statusBgColorClass = statusColors[matchedStatus] || 'bg-gray-500 text-white';
+    const companyBgColorClass = companyColors[company?.toLowerCase()] || 'bg-gray-500 text-white';
 
     return (
         <>
             {deliveryStatus && (
                 <span className={`status-indicator p-1.5 rounded-full text-center ${statusBgColorClass}`}>
-                    {deliveryStatus === 'none' ? 'New Entry' : deliveryStatus}
+                    {deliveryStatus === 'none' ? 'New Entry' : deliveryStatus.replace(':', ': ')}
                 </span>
             )}
             {company && (
-                <span className={`status-indicator p-1.5 rounded-full text-center ${companyBgColorClass}`}>
+                <span className={`status-indicator p-1.5 rounded-full text-center mr-2 ${companyBgColorClass}`}>
                     {company}
                 </span>
             )}
@@ -98,7 +99,7 @@ export const ImportedProducts = () => {
                                             <p className="text-sm font-semibold leading-6 text-white-900 z-10 relative">
                                                 {product_main_title}
                                             </p>
-                                            <p className="mb-2 text-xs leading-5 text-white-900 z-10 relative space-x-2">{selected_product_variant}</p>
+                                            <p className="mb-2 text-xs leading-5 text-white-900 z-10 relative">{selected_product_variant}</p>
                                             <StatusIndicators company={company} />
                                             {expressId && (
                                                 <span className="bg-blue-400 text-white p-1.5 rounded-full text-center z-2 relative">{`${expressName}: ${expressId}`}</span>
@@ -110,7 +111,7 @@ export const ImportedProducts = () => {
                                     <div className="shrink-0 sm:flex sm:flex-col sm:items-end">
                                         <p className="text-sm leading-6 text-gray-900">Buttons</p>
                                         <div className="mt-1 flex items-center gap-x-1.5">
-                                            <CircularButton icon="-" bgColor="blue" orderId={orderId} isMinus={true} />
+                                            <CircularButton icon="-" bgColor="blue" orderId={orderId} isMinus />
                                             <CircularButton icon="+" bgColor="blue" orderId={orderId} />
                                         </div>
                                     </div>

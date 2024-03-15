@@ -20,162 +20,209 @@ interface TrackingInfo {
  * One-time chrome message listener and short-lived
  * each case get its own destructured request due to race condition
  */
-
+let nswex_script_loaded = false;
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    switch (request?.msg_action) {
-        case 'get_buyertrade_tracking_code':
-            chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
-                const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+    const { msg_action } = request;
+    const [src_msg, child_msg] = msg_action.split(':');
 
-                const apiUrl = `https://buyertrade.taobao.com/trade/json/transit_step.do?bizOrderId=${request.orderId}`
+    switch (src_msg) {
+        case 'buyertrade': {
+            switch (child_msg) {
+                case 'get_buyertrade_tracking_code': {
+                    chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
+                        const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
 
-                fetch(apiUrl, {
-                    method: "GET",
-                    headers: {
-                        "Cookie": cookieString,
-                        "Accept": "application/json",
-                    },
-                })
-                    .then(response => response.arrayBuffer())
-                    .then(async data => {
-                        const decoder = new TextDecoder('gbk');
-                        const parsedData: TrackingInfo = JSON.parse(decoder.decode(data));
+                        const apiUrl = `https://buyertrade.taobao.com/trade/json/transit_step.do?bizOrderId=${request.orderId}`
+                        fetch(apiUrl, {
+                            method: "GET",
+                            headers: {
+                                "Cookie": cookieString,
+                                "Accept": "application/json",
+                            },
+                        })
+                            .then(response => response.arrayBuffer())
+                            .then(async data => {
+                                const decoder = new TextDecoder('gbk');
+                                const parsedData: TrackingInfo = JSON.parse(decoder.decode(data));
 
-                        if (parsedData?.expressName && parsedData?.expressId) {
-                            const { expressName, expressId } = parsedData;
-                            sendResponse({ expressId, expressName });
-                        } else {
-                            sendResponse(null);
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error querying buyertrade.taobao.com :", error);
-                        sendResponse({ status: false, error: error.message });
+                                if (parsedData?.expressName && parsedData?.expressId) {
+                                    const { expressName, expressId } = parsedData;
+                                    sendResponse({ expressId, expressName });
+                                } else {
+                                    sendResponse(null);
+                                }
+                            })
+                            .catch(error => {
+                                console.error("Error querying buyertrade.taobao.com :", error);
+                                sendResponse({ status: false, error: error.message });
 
+                            });
                     });
-            });
-            break;
+                    break;
+                }
+                case 'get_itempage_products': {
+                    const { url_param_data } = request;
 
-        case 'get_itempage_products': {
-            const { url_param_data } = request;
+                    const _queryBuilder = new queryBuilder(url_param_data)
+                    _queryBuilder.fetchTaoItemPage()
+                        .then(res => {
+                            sendResponse(res)
+                        }).catch(e => {
+                            sendResponse(e)
+                        })
+                    break;
+                }
 
-            const _queryBuilder = new queryBuilder(url_param_data)
-            _queryBuilder.fetchTaoItemPage()
-                .then(res => {
-                    sendResponse(res)
-                }).catch(e => {
-                    sendResponse(e)
-                })
+                case 'get_itempage_reviews': {
+
+                    const { url_param_data } = request;
+
+                    const _queryBuilder = new queryBuilder(url_param_data)
+                    _queryBuilder.fetchTaoReviewPage()
+                        .then(res => {
+                            sendResponse(res)
+                        }).catch(e => {
+                            sendResponse(e)
+                        })
+                    break;
+                }
+                case 'get_itempage_products_moredetails': {
+                    // Mainly to get address of product
+                    const { orderId } = request;
+                    const change_param_data = { "source": 1, "bizOrderId": orderId, "requestIdentity": "#t#ip##_h5_web_default", "appName": "tborder", "appVersion": "3.0" }
+
+                    const _queryBuilder = new queryBuilder(change_param_data)
+                    _queryBuilder.fetchMoreItemDetails()
+                        .then(res => {
+                            sendResponse(res)
+                        }).catch(e => {
+                            sendResponse(e)
+                        })
+
+                    break;
+                }
+                default:
+            }
             break;
         }
 
-        case 'get_itempage_reviews': {
-
-            const { url_param_data } = request;
-
-            const _queryBuilder = new queryBuilder(url_param_data)
-            _queryBuilder.fetchTaoReviewPage()
-                .then(res => {
-                    sendResponse(res)
-                }).catch(e => {
-                    sendResponse(e)
-                })
+        case 'popup': {
+            switch (child_msg) {
+                case 'create_nswex_tab': {
+                    const { product, url } = request;
+                    chrome.tabs.create({ url }, function (newTab) {
+                        if (newTab.id !== undefined) {
+                            chrome.webNavigation.onCompleted.addListener(function listener(details) {
+                                if (details.tabId === newTab.id) {
+                                    if (nswex_script_loaded) {
+                                        const port = chrome.tabs.connect(newTab.id);
+                                        port.postMessage({ msg_action: 'nswex_fill_form', ...product });
+                                        chrome.webNavigation.onCompleted.removeListener(listener);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    break;
+                }
+                // ...
+            }
             break;
         }
-        case 'get_itempage_products_moredetails': {
-            // Mainly to get address of product
-            const { orderId } = request;
-            let change_param_data = { "source": 1, "bizOrderId": orderId, "requestIdentity": "#t#ip##_h5_web_default", "appName": "tborder", "appVersion": "3.0" }
-
-            const _queryBuilder = new queryBuilder(change_param_data)
-            _queryBuilder.fetchMoreItemDetails()
-                .then(res => {
-                    sendResponse(res)
-                }).catch(e => {
-                    sendResponse(e)
-                })
-
+        
+        case 'nswex': {
+            switch (child_msg) {
+                case 'script_loaded': {
+                    nswex_script_loaded = true;
+                    console.log('script_loaded nswex')
+                    break;
+                }
+            }
             break;
         }
-
-        default:
     }
+
     // Bug in chrome api itself, need to return true, so it will wait for response
     return true;
 });
 
-let popupPort;
 
 /**
  * Listener for a persistent connection content-script and background ts
  */
 chrome.runtime.onConnect.addListener((port) => {
-    if (port.name === 'content-script') {
-
-        // Save the port for later communication
-        popupPort = port;
-        // Listen for messages from the content script
+    if (port.name == 'content-script') {
         port.onMessage.addListener(async (resp) => {
             const { msg_action, db_data, first_query } = resp;
-            const { orderId, buyertrade_tracking_info, ...rest } = db_data
-            const [postprocess, post_msg] = msg_action.split(':')
-            const nswexFreight = new NswexStatusChecker()
+            const { orderId, buyertrade_tracking_info } = db_data;
+            const nswexFreight = new NswexStatusChecker();
 
-            if (postprocess) {
-                switch (post_msg) {
-                    case 'redive_endpoint':
-                        resp.freight_html = {
-                            redive_html: await nswexFreight.checkStatus({ type: NswexFreightStatusType.REDIVE_INFO, nswex_order_id: orderId })
-                        };
-                        break;
-                }
-            }
+            const [src_msg, child_msg] = msg_action.split(':');
+            switch (src_msg) {
+                case 'buyertrade': {
+                    switch (child_msg) {
+                        case 'is_mulupost_freight_processed': {
+                            const muluFreight = new MulupostStatusChecker()
+                            const mulu_html = await muluFreight.checkStatus('search', buyertrade_tracking_info?.expressId)
 
-            switch (msg_action) {
-                case 'is_mulupost_freight_processed': {
-                    const muluFreight = new MulupostStatusChecker()
-                    const mulu_html = await muluFreight.checkStatus('search', buyertrade_tracking_info?.expressId)
+                            resp.freight_html = {
+                                mulu_html
+                            };
 
-                    resp.freight_html = {
-                        mulu_html
-                    };
+                            delete resp.msg_action;
 
-                    delete resp.msg_action;
+                            port.postMessage({ msg_action: "process_mulupost_freight_html", ...resp })
+                            break;
+                        }
 
-                    port.postMessage({ msg_action: "process_mulupost_freight_html", ...resp })
-                    break;
-                }
+                        case 'is_nswex_freight_processed': {
+                            if (first_query) {
+                                const [delivery_html, ontheway_html, arrived_html] = await Promise.all([
+                                    nswexFreight.checkStatus({ type: NswexFreightStatusType.DELIVERY_INFO, express_id: buyertrade_tracking_info?.expressId }),
+                                    nswexFreight.checkStatus({ type: NswexFreightStatusType.ON_THE_WAY_INFO }),
+                                    nswexFreight.checkStatus({ type: NswexFreightStatusType.ARRIVED_INFO })
+                                ])
 
-                case 'is_nswex_freight_processed': {
-                    if (first_query) {
-                        const [delivery_html, ontheway_html, arrived_html] = await Promise.all([
-                            nswexFreight.checkStatus({ type: NswexFreightStatusType.DELIVERY_INFO, express_id: buyertrade_tracking_info?.expressId }),
-                            nswexFreight.checkStatus({ type: NswexFreightStatusType.ON_THE_WAY_INFO }),
-                            nswexFreight.checkStatus({ type: NswexFreightStatusType.ARRIVED_INFO })
-                        ])
+                                resp.freight_html = {
+                                    delivery_html: { delivery_html_raw: delivery_html, delivery_html_tcode: buyertrade_tracking_info?.expressId },
+                                    ontheway_html,
+                                    arrived_html
+                                };
+                            } else {
+                                resp.freight_html = {
+                                    delivery_html: {
+                                        delivery_html_raw: await nswexFreight.checkStatus({ type: NswexFreightStatusType.DELIVERY_INFO, express_id: buyertrade_tracking_info?.expressId }),
+                                        delivery_html_tcode: buyertrade_tracking_info?.expressId
+                                    }
+                                };
+                            }
 
-                        resp.freight_html = {
-                            delivery_html,
-                            ontheway_html,
-                            arrived_html
-                        };
-                    } else {
-                        resp.freight_html = {
-                            delivery_html: await nswexFreight.checkStatus({ type: NswexFreightStatusType.DELIVERY_INFO, express_id: buyertrade_tracking_info?.expressId })
-                        };
+                            delete resp.msg_action; //Bug in chrome where msg_action will stuck on previous call
+
+                            port.postMessage({ msg_action: "process_nswex_freight_html", ...resp })
+                            break;
+                        }
+                        case 'save_db': {
+                            idb.add({ orderId, ...db_data })
+                            break;
+                        }
+                        default:
                     }
-
-                    delete resp.msg_action; //Bug in chrome where msg_action will stuck on previous call
-
-                    port.postMessage({ msg_action: "process_nswex_freight_html", ...resp })
                     break;
                 }
-                case 'save_db': {
-                    idb.add({ orderId, ...db_data })
+
+                case 'postprocess': {
+                    switch (child_msg) {
+                        case 'redive_endpoint':
+                            resp.freight_html = {
+                                redive_html: await nswexFreight.checkStatus({ type: NswexFreightStatusType.REDIVE_INFO, nswex_order_id: orderId })
+                            };
+                            break;
+                    }
                     break;
                 }
-                default:
             }
+
         });
     }
 });

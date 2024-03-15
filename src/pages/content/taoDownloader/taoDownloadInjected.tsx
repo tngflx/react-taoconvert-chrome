@@ -74,7 +74,6 @@ export async function taoDownloader() {
     const [h5api_data, remapped_review_data] = await Promise.allSettled([
 
         new Promise((resolve) => {
-
             let url_param_data = {
                 "id": queryParams.get("id"),
                 "detail_v": "3.3.2",
