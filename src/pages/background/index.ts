@@ -117,6 +117,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                                     if (nswex_script_loaded) {
                                         const port = chrome.tabs.connect(newTab.id);
                                         port.postMessage({ msg_action: 'nswex_fill_form', ...product });
+                                        nswex_script_loaded = false;
                                         chrome.webNavigation.onCompleted.removeListener(listener);
                                     }
                                 }

@@ -138,8 +138,10 @@ export function createStorage<D>(key: string, fallback: D, config?: StorageConfi
     // Register life cycle methods
     const _getDataFromStorage = async (): Promise<D> => {
         checkStoragePermission(storageType);
-        const value = await chrome.storage[storageType].get([key]);
-        return value[key] ?? fallback;
+        const queryStringKey = `${window.location.search}_${key}`;
+
+        const value = await chrome.storage[storageType].get([queryStringKey]);
+        return value[queryStringKey] ?? fallback;
     };
 
     const _emitChange = () => {
@@ -149,8 +151,14 @@ export function createStorage<D>(key: string, fallback: D, config?: StorageConfi
     const set = async (valueOrUpdate: ValueOrUpdate<D>) => {
         cache = await updateCache(valueOrUpdate, cache);
 
-        await chrome.storage[storageType].set({ [key]: cache });
-        _emitChange();
+        // Get the current tab's URL query string
+        const queryString = window.location.search;
+        // Use the query string as part of the key
+        const queryStringKey = `${queryString}_${key}`;
+
+        chrome.storage[storageType].set({ [queryStringKey]: cache }, function () {
+            _emitChange();
+        });
     };
 
     const subscribe = (listener: () => void) => {

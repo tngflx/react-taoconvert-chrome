@@ -1,31 +1,31 @@
-﻿import Result from "postcss/lib/result";
-import dataStore, { loadState } from "../../../shared/storages/reviewItemSkuBase";
-import { DOMTools, MutationObserverManager } from "../utils/misc";
-import { processReviewTab } from "./reviewTabInjected";
+﻿import Result from 'postcss/lib/result';
+import dataStore, { loadState } from '../../../shared/storages/reviewItemSkuBase';
+import { DOMTools, MutationObserverManager } from '../utils/misc';
+import { processReviewTab } from './reviewTabInjected';
 const mutObserverManager = new MutationObserverManager();
 
 export async function taoDownloader() {
-    await loadState.setLoad(true)
+  await loadState.setLoad(true);
 
-    const all_sku_items = document.querySelectorAll('div.skuItemWrapper .skuItem')
+  const all_sku_items = document.querySelectorAll('div.skuItemWrapper .skuItem');
 
-    let { href: currentURL, origin: domain, search: queryString, pathname } = window.location
-    const queryParams = new URLSearchParams(queryString);
-    queryString = queryString.substring(1)
+  let { href: currentURL, origin: domain, search: queryString, pathname } = window.location;
+  const queryParams = new URLSearchParams(queryString);
+  queryString = queryString.substring(1);
 
-    /**
-     * All these complexity for api call on taobao!
-     * Extracting all query paramters from item.taobao.com/item.htm? url
-     */
-    const arrayParamKeys = Array.from(queryParams.keys());
+  /**
+   * All these complexity for api call on taobao!
+   * Extracting all query paramters from item.taobao.com/item.htm? url
+   */
+  const arrayParamKeys = Array.from(queryParams.keys());
 
-    // Fix weird urlsearchparam bug where first key is the whole url itself
-    let exParams: { id?: string } = {};
-    arrayParamKeys.forEach((key) => {
-        exParams[key] = queryParams.get(key);
-    });
+  // Fix weird urlsearchparam bug where first key is the whole url itself
+  const exParams: { id?: string } = {};
+  arrayParamKeys.forEach(key => {
+    exParams[key] = queryParams.get(key);
+  });
 
-    /**
+  /**
         * example of json h5api_data
         * "skuBase.skus": [
                 {
@@ -71,74 +71,85 @@ export async function taoDownloader() {
                     "quantityText": "无货"
                 },
         */
-    const [h5api_data, remapped_review_data] = await Promise.allSettled([
-
-        new Promise((resolve) => {
-            let url_param_data = {
-                "id": queryParams.get("id"),
-                "detail_v": "3.3.2",
-                "exParams": JSON.stringify({
-                    ...exParams,
-                    queryString,
-                    domain,
-                    path_name: pathname
-                })
-            };
-
-            //resolve({ data: 'ds' })
-            chrome.runtime.sendMessage({ msg_action: 'get_itempage_products', url_param_data }, h5api_data => {
-                resolve(h5api_data)
-            })
+  const [h5api_data, remapped_review_data] = await Promise.allSettled([
+    new Promise(resolve => {
+      const url_param_data = {
+        id: queryParams.get('id'),
+        detail_v: '3.3.2',
+        exParams: JSON.stringify({
+          ...exParams,
+          queryString,
+          domain,
+          path_name: pathname,
         }),
-        processReviewTab()
-    ])
+      };
 
-    if (h5api_data.status === 'fulfilled') {
-        const { data: { skuBase, skuCore } } = h5api_data.value as { data: any };
+      //resolve({ data: 'ds' })
+      chrome.runtime.sendMessage({ msg_action: 'buyertrade:get_itempage_products', url_param_data }, h5api_data => {
+        resolve(h5api_data);
+      });
+    }),
+    processReviewTab(),
+  ]);
 
-        function matchSkuBase(to_match_pid, to_match_vid, option: "inner" | "outer") {
-            if (option == "inner")
-                return skuBase.props.find((p) => p.pid === to_match_pid)?.values?.find((v) => v.vid === to_match_vid)
-            else if (option == "outer")
-                return skuBase.props.find((p) => p.pid === to_match_pid)
+  if (h5api_data.status === 'fulfilled') {
+    const {
+      data: { skuBase, skuCore },
+    } = h5api_data.value as { data: any };
+
+    function matchSkuBase(to_match_pid, to_match_vid, option: 'inner' | 'outer') {
+      if (option == 'inner')
+        return skuBase.props.find(p => p.pid === to_match_pid)?.values?.find(v => v.vid === to_match_vid);
+      else if (option == 'outer') return skuBase.props.find(p => p.pid === to_match_pid);
+    }
+
+    const remapped_skubase_data = skuBase.skus.reduce((groupedMap, { propPath, skuId }) => {
+      const prop_path_segments = propPath.split(';');
+      const [main_product_pid, main_product_vid] = prop_path_segments[0].split(':').map(i => i.trim());
+      const main_product_skubase_prop = matchSkuBase(main_product_pid, main_product_vid, 'inner');
+
+      const main_product_title = main_product_skubase_prop?.name;
+      const main_product_image = main_product_skubase_prop?.image;
+
+      const sku2info: Sku2Info = skuCore.sku2info;
+      const { price, quantity } = sku2info[skuId] || { price: {}, quantity: '' };
+
+      //only iterate the last two or more segment of the propPath depends on categorylist
+      const prop_keys = prop_path_segments.slice(1).reduce(
+        (accum, segment) => {
+          const [pid, vid] = segment.split(':').map(item => item.trim());
+          accum.categories_path += `${matchSkuBase(pid, vid, 'outer')?.name}/`;
+          accum.values_key_categories += `${matchSkuBase(pid, vid, 'inner')?.name}/`;
+          return accum;
+        },
+        { categories_path: '', values_key_categories: '' },
+      );
+
+      const { categories_path, values_key_categories } = prop_keys;
+
+      const existingEntry = groupedMap.find(entry => entry.main_product_title === main_product_title);
+      const is_not_emptycategories = categories_path !== '' && values_key_categories !== '';
+
+      if (!existingEntry) {
+        const groupedMap_template = {
+          main_product_title,
+          image: main_product_image || '',
+          values: { [values_key_categories.slice(0, -1)]: { price: price?.priceText, quantity } },
+        };
+
+        if (is_not_emptycategories) {
+          groupedMap.push({ ...groupedMap_template, variation_names: categories_path.slice(0, -1) });
+        } else {
+          groupedMap.push({ ...groupedMap_template, value: { price: price?.priceText, quantity } });
         }
+      } else {
+        // If the entry already exists, update the values directly
+        if (is_not_emptycategories)
+          existingEntry.values[values_key_categories.slice(0, -1)] = [price?.priceText, quantity];
+        else existingEntry.value = [price?.priceText, quantity];
+      }
 
-        const remapped_skubase_data = skuBase.skus.reduce((groupedMap, { propPath, skuId }) => {
-            const prop_path_segments = propPath.split(";");
-            const [main_product_pid, main_product_vid] = prop_path_segments[0].split(":").map(i => i.trim())
-            const main_product_skubase_prop = matchSkuBase(main_product_pid, main_product_vid, "inner")
-
-            const main_product_title = main_product_skubase_prop?.name
-            const main_product_image = main_product_skubase_prop?.image
-
-            const sku2info: Sku2Info = skuCore.sku2info;
-            const { price, quantity } = sku2info[skuId] || { price: {}, quantity: '' };
-
-            const prop_keys = prop_path_segments.slice(1).reduce((accum, segment) => {
-                const [pid, vid] = segment.split(":").map(item => item.trim());
-                accum.category_lists += `${matchSkuBase(pid, vid, "outer")?.name}/`;
-                accum.combined_key += `${matchSkuBase(pid, vid, "inner")?.name}/`;
-                return accum;
-            }, { category_lists: '', combined_key: '' });
-
-            const { category_lists, combined_key } = prop_keys;
-
-            const existingEntry = groupedMap.find(entry => entry.main_product_title === main_product_title);
-
-            if (!existingEntry) {
-                // If it doesn't exist, create a new entry and add it to groupedMap
-                groupedMap.push({
-                    main_product_title,
-                    variation_names: category_lists.slice(0, -1),
-                    image: main_product_image || '',
-                    values: { [combined_key.slice(0, -1)]: [price?.priceText, quantity] },
-                });
-            } else {
-                // If the entry already exists, update the values directly
-                existingEntry.values[combined_key.slice(0, -1)] = [price?.priceText, quantity];
-            }
-
-            /**
+      /**
              * Example returned groupedMap data
              * {
                   "product": {
@@ -159,29 +170,27 @@ export async function taoDownloader() {
                 }
 
              */
-            return groupedMap;
+      return groupedMap;
+    }, []);
 
-        }, []);
+    // Update the data store with the grouped information
+    await dataStore.updateRemappedSkuBase(remapped_skubase_data);
+  } else {
+    throw new Error('remapped_sku_base failed!');
+  }
 
-        // Update the data store with the grouped information
-        await dataStore.updateRemappedSkuBase(remapped_skubase_data);
-    } else {
-        throw new Error('remapped_sku_base failed!');
-    }
+  if (remapped_review_data.status == 'fulfilled') {
+    await dataStore.updateRemappedReviewData(remapped_review_data.value as any);
+  } else if (remapped_review_data.status == 'rejected') {
+    throw Error(
+      `remapped_review_data failed! Do click on the review tab to load the review data first! Reason: ${remapped_review_data?.reason}`,
+    );
+  }
 
+  all_sku_items.forEach(sku_item => {
+    const product_title = sku_item.querySelector('div[title]')?.textContent;
+    const product_image = sku_item.querySelector('img[class="skuIcon"]')?.getAttribute('src');
+  });
 
-    if (remapped_review_data.status == 'fulfilled') {
-        await dataStore.updateRemappedReviewData(remapped_review_data.value as any)
-    } else {
-        throw Error('remapped_review_data failed!')
-    }
-
-    all_sku_items.forEach(sku_item => {
-        const product_title = sku_item.querySelector("div[title]")?.textContent
-        const product_image = sku_item.querySelector('img[class="skuIcon"]')?.getAttribute("src")
-
-    })
-
-
-    await loadState.setLoad(false)
+  await loadState.setLoad(false);
 }

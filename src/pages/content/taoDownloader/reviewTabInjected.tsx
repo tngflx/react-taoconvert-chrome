@@ -11,7 +11,7 @@ export async function processReviewTab() {
     const url_param_data = { "itemId": queryParams.get('id'), "bizCode": "ali.china.tmall", "channel": "pc_detail", "pageSize": 100, "pageNum": 1 }
 
     const h5api_review_data: { data: any } = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ msg_action: 'get_itempage_reviews', url_param_data }, h5api_data => {
+        chrome.runtime.sendMessage({ msg_action: 'buyertrade:get_itempage_reviews', url_param_data }, h5api_data => {
             resolve(h5api_data)
         })
     })
@@ -24,9 +24,9 @@ export async function processReviewTab() {
             const revPicPathList = [...(review.reviewPicPathList || []), ...(reviewAppendVO?.reviewPicPathList || [])];
             if (revPicPathList?.length == 0) return grouped_by_skutext_review_data;
 
-            const skuValue = review.skuText['颜色分类'];
+            const skuValue = review?.skuText?.['颜色分类'];
 
-            const { appendedWordContent } = reviewAppendVO;
+            // const { appendedWordContent } = reviewAppendVO;
             let existing_entry = grouped_by_skutext_review_data.get(skuValue)
 
             if (!existing_entry) {
@@ -55,11 +55,12 @@ export async function processReviewTab() {
 
 const selectionReducer = (state, action) => {
     switch (action.type) {
-        case "TOGGLE_SELECTION":
+        case "TOGGLE_SELECTION": {
             const isSelected = state.includes(action.payload);
             return isSelected
                 ? state.filter((src) => src !== action.payload)
                 : [...state, action.payload];
+        }
         case "CLEAR_SELECTION":
             return [];
         default:
@@ -113,10 +114,10 @@ export const ImageTiles = () => {
                         {review_data.map(({ revPicPathList }: { revPicPathList: [] }, childIndex) => (
                             <div key={childIndex} className="grid grid-cols-8 gap-3">
                                 {revPicPathList.map((imagePath, imageIndex) => (
-                                    <div className="relative">
+                                    <div className="relative" key={imageIndex}>
                                         <img
                                             src={convertImageUrl(imagePath, 450, 90)}
-                                            alt={`Image ${parentIndex + 1}.${childIndex + 1}`}
+                                            alt={`${parentIndex + 1}.${childIndex + 1}`}
                                             className="w-full h-[200px] object-cover rounded-lg mb-2 hover:scale-125 transition-transform duration-300 cursor-pointer"
                                             onClick={() => handleImageClick(imagePath)}
                                         />
@@ -171,7 +172,7 @@ export const ImageTiles = () => {
 
 let flat_comment_photos;
 function reviewTabScrape() {
-    let commentTabToObserve = 'div[class^="Tabs--root"] [class^="Tabs--container"]';
+    const commentTabToObserve = 'div[class^="Tabs--root"] [class^="Tabs--container"]';
 
     const review_tab_container = document.querySelector(commentTabToObserve)
     const review_with_pic_orvid = review_tab_container.querySelectorAll('div[class^="Comments--tagList"] button.detail-btn')[1] as HTMLElement

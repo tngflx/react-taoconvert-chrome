@@ -1,4 +1,5 @@
-﻿import { render } from 'react-dom';
+﻿/* eslint-disable no-inner-declarations */
+import { render } from 'react-dom';
 import { DOMTools } from '../utils/misc';
 import ButtonRenderer from '../sharedComponents/renderer/taoButtonRenderer';
 const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
@@ -85,7 +86,7 @@ port.onMessage.addListener(async (resp) => {
             }
             db_data.freight_delivery_data = freightProps;
 
-            port.postMessage({ msg_action: 'save_db', db_data })
+            port.postMessage({ msg_action: 'buyertrade:save_db', db_data })
             console.log({ ...db_data }, 'mulupost')
             break;
         }
@@ -167,10 +168,11 @@ port.onMessage.addListener(async (resp) => {
                                 case 'shipping_note':
                                     rowData['delivery_status_tracklink'] = tbody_value[thead_index]?.querySelector('a.agree')?.getAttribute('href');
                                     break;
-                                case 'delivery_order_status':
+                                case 'delivery_order_status':{
                                     const status = tbody_value[thead_index]?.querySelector('span.order_status')?.textContent.trim().replace(/\n/g, '') || tbody_value[thead_index]?.querySelector('span#order_product_status')?.textContent.trim().replace(/\n/g, '');
                                     status == 'completed' ? rowData[key] = 'Delivery' : rowData[key] = status;
                                     break;
+                                }
                                 case 'date_added':
                                     rowData[key] = tbody_value[thead_index]?.textContent.trim().split(/\s+/)[0];
                                     break;
@@ -180,7 +182,7 @@ port.onMessage.addListener(async (resp) => {
                             }
                         })
 
-                        if (!rowData.hasOwnProperty('tracking_number')) {
+                        if (!Object.prototype.hasOwnProperty.call(rowData, 'tracking_number')) {
                             // If tracking_number key is not found, force add it with tcode comes from delivery_html
                             rowData['tracking_number'] = delivery_html_tcode;
                         }
@@ -250,7 +252,7 @@ port.onMessage.addListener(async (resp) => {
             delete resp.freight_html;
             delete resp.msg_action; // Fixes bug where previous msg_action obj stuck with a new chromeapi postmessage call
 
-            port.postMessage({ msg_action: 'save_db', db_data })
+            port.postMessage({ msg_action: 'buyertrade:save_db', db_data })
             console.log({ ...db_data }, 'nswex')
             break;
         }
