@@ -11,18 +11,17 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
   const [mainProductTitle, setMainProductTitle] = useState(null); // New state for storing main_product_title
 
   const handleCheckboxChange = ({ main_product_title: newTitle, variant }) => {
+    if (!variant) {
+      setMainProductTitle(newTitle);
+      return;
+    }
+
+    // Use the saved mainProductTitle if variant is provided
+    const main_product_title = mainProductTitle || newTitle;
+
     setSelectedVariants(prevSelectedVariants => {
-      console.log(prevSelectedVariants);
       // Check if the newTitle already exists in selectedVariants
-      const existingIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === newTitle);
-
-      if (!variant) {
-        setMainProductTitle(newTitle);
-        return prevSelectedVariants;
-      }
-
-      // Use the saved mainProductTitle if variant is provided
-      const main_product_title = mainProductTitle || newTitle;
+      const existingIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === main_product_title);
 
       // If main_product_title already exists, update its selectedArray with the new variant
       if (existingIndex !== -1) {
@@ -31,16 +30,8 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
           return prevSelectedVariants;
         }
 
-        return prevSelectedVariants.map((item, index) => {
-          if (index === existingIndex) {
-            return {
-              [main_product_title]: {
-                selectedArray: [...item[main_product_title].selectedArray, variant],
-              },
-            };
-          }
-          return item;
-        });
+        prevSelectedVariants[existingIndex][main_product_title].selectedArray.push(variant);
+        return [...prevSelectedVariants];
       } else {
         // If main_product_title doesn't exist, add it with the new variant
         return [
@@ -52,7 +43,10 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
           },
         ];
       }
+
     });
+    console.log(selectedVariants.map(v => v[mainProductTitle].selectedArray))
+
   };
 
   const handleNextStep = () => {
@@ -100,7 +94,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         <div className="flex items-center ps-3">
           <Checkbox.Root
             className="w-4 h-4 text-blue-400 bg-white-200 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-            checked={selectedVariants.some(v => v[mainProductTitle].selectedArray[0] == variant)}
+            checked={selectedVariants.some(v => v?.[mainProductTitle]?.selectedArray.some(v => v == variant))}
             onCheckedChange={() => handleCheckboxChange({ main_product_title: undefined, variant })}
             id={`checkbox_${variant}_${index}`}>
             <Checkbox.Indicator className="text-green">
