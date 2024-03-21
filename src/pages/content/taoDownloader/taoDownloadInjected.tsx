@@ -89,7 +89,7 @@ export async function taoDownloader() {
         resolve(h5api_data);
       });
     }),
-    processReviewTab(),
+    // processReviewTab(),
   ]);
 
   if (h5api_data.status === 'fulfilled') {
@@ -128,6 +128,9 @@ export async function taoDownloader() {
       const { categories_path, values_key_categories } = prop_keys;
 
       const existingEntry = groupedMap.find(entry => entry.main_product_title === main_product_title);
+
+      // If the categories_path is not empty, then the entry have variation_names of the main product
+      // Do take note some of the main_product doesn't have any variation_names
       const is_not_emptycategories = categories_path !== '' && values_key_categories !== '';
 
       if (!existingEntry) {
@@ -137,16 +140,18 @@ export async function taoDownloader() {
           values: { [values_key_categories.slice(0, -1)]: { price: price?.priceText, quantity } },
         };
 
+        // If main product does have variation, then add the variation_names to the groupedMap_template
+        // If not, then just add the price and quantity to the groupedMap_template
         if (is_not_emptycategories) {
           groupedMap.push({ ...groupedMap_template, variation_names: categories_path.slice(0, -1) });
         } else {
           groupedMap.push({ ...groupedMap_template, value: { price: price?.priceText, quantity } });
         }
       } else {
-        // If the entry already exists, update the values directly
+        // If main product does have variation and there's existing entry, just update values of the existing entry
         if (is_not_emptycategories)
-          existingEntry.values[values_key_categories.slice(0, -1)] = [price?.priceText, quantity];
-        else existingEntry.value = [price?.priceText, quantity];
+          existingEntry.values[values_key_categories.slice(0, -1)] = { price: price?.priceText, quantity };
+        else existingEntry.value = { price: price?.priceText, quantity };
       }
 
       /**
