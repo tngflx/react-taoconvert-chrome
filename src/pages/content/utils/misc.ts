@@ -244,3 +244,11 @@ export class MutationObserverManager extends DOMTools {
         observer.observe(this.mutatedTargetParentNode, { childList: true, subtree: this.subtree });
     }
 }
+
+export function promisify(fn) {
+    return (...args) => new Promise((resolve, reject) => {
+        fn(...args, result => {
+            chrome.runtime.lastError ? reject(chrome.runtime.lastError) : resolve(result);
+        });
+    });
+}

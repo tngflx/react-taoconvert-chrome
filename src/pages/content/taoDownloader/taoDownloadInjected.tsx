@@ -1,6 +1,6 @@
 ﻿import Result from 'postcss/lib/result';
 import dataStore, { loadState } from '../../../shared/storages/reviewItemSkuBase';
-import { DOMTools, MutationObserverManager } from '../utils/misc';
+import { DOMTools, MutationObserverManager, promisify } from '../utils/misc';
 import { processReviewTab } from './reviewTabInjected';
 const mutObserverManager = new MutationObserverManager();
 
@@ -71,6 +71,18 @@ export async function taoDownloader() {
                     "quantityText": "无货"
                 },
         */
+
+  const existing_local_stored_chrome = await dataStore.get();
+
+  const existing_local_stored_chrome_nonempty = Object.values(existing_local_stored_chrome).reduce(
+    (all_not_empty, current_array) => {
+      return all_not_empty && Array.isArray(current_array) && current_array.length > 0;
+    },
+    true,
+  );
+  
+  if (existing_local_stored_chrome_nonempty) return;
+
   const [h5api_data, remapped_review_data] = await Promise.allSettled([
     new Promise(resolve => {
       const url_param_data = {
