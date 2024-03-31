@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import * as Checkbox from '@radix-ui/react-checkbox';
 import useStorage from '../../../../shared/hooks/useStorage';
 import dataStore from '../../../../shared/storages/reviewItemSkuBase';
@@ -88,17 +88,21 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 const existing_product = prevSelectedVariants[existingIndex];
                 let existing_variant_keysvals = existing_product[main_selected_prod_key];
 
-                const keyPattern = /^(.*):(.*)\/(.*)$/;
-
                 let matched_condition = '';
                 let existing_variant_val = '';
                 let existing_variant_key = '';
 
                 existing_variant_keysvals.some((existing_variant_keyval, index, array) => {
-                    const v_key = Object.keys(existing_variant_keyval)[0];
-                    const match = v_key?.match(keyPattern);
+                    const existing_v_keysvals_keyonly = Object.keys(existing_variant_keyval)[0];
+                    const keyval_segments = existing_v_keysvals_keyonly?.split('/');
+                    keyval_segments.forEach((segment, index) => {
+                        const [v_key, v_val]= segment.split(':');
+                        if (segment.includes(current_variant_key)) {
+                            existing_variant_val = segment;
+                            existing_variant_key = current_variant_key;
+                        }
+                    });
 
-                    if (!match) return false;
 
                     const is_same_variant_key = match[1] === current_variant_key;
                     const variant_value1 = match[2];
@@ -108,15 +112,22 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     existing_variant_key = match[1];
                     // This is to ensure the loop continues if certain there's matched value
                     const check_vval_does_exist = existing_variant_keysvals.some(obj => Object.keys(obj)[0].includes(current_variant_val));
+                    const check_vval_all_occupied = existing_variant_keysvals.every(key_val => {
+                        const part = Object.keys(key_val)[0].split('/')
+                        return part[part.length - 1] !== '';
+                    });
 
                     if (is_same_variant_key) {
-                        if (variant_value1 === current_variant_val && check_vval_does_exist) {
+                        if (variant_value1 === current_variant_val) {
                             matched_condition = 'delete_existing_entry';
                             return true;
                         } else if (variant_value1 !== current_variant_val && !check_vval_does_exist) {
                             matched_condition = 'add_new_variant_key';
                             return true;
                         }
+                    } else if (!is_same_variant_key && check_vval_all_occupied) {
+                        matched_condition = 'add_same_vkey_diff_vval';
+                        return true;
                     }
 
                     const isLastEntry = index === array.length - 1;
@@ -143,10 +154,15 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         });
                         break;
                     case 'delete_existing_entry':
-                        existing_variant_keysvals = existing_variant_keysvals.filter(existing_variant_keyval => {
+                        const newVariantKeysVals = existing_variant_keysvals.filter(existing_variant_keyval => {
                             return !Object.keys(existing_variant_keyval)[0].includes(current_variant_val);
                         });
-                        existing_product[main_selected_prod_key] = existing_variant_keysvals;
+                        const newProduct = { ...existing_product, [main_selected_prod_key]: newVariantKeysVals };
+                        return prevSelectedVariants.map(item => (item === existing_product ? newProduct : item));
+                    case 'add_same_vkey_diff_vval':
+                        existing_variant_keysvals.push({
+                            [`${existing_variant_key}:${existing_variant_val}/${current_variant_key}:${current_variant_val}`]: { price: '', quantity: '' },
+                        });
                         break;
                     default:
                         // Handle default case
