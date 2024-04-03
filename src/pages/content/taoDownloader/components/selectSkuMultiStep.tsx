@@ -44,144 +44,83 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     const main_selected_prod_key =
         mainProductTitleState.length > 0 ? mainProductTitleState[mainProductTitleState.length - 1] : null;
 
+    /**
+     * I want to match when variant only have partial value, e.g. 'Color:Red/' or 'Color:Red/Size:'
+     * It means that the current selected variant is truly incomplete yet, and need another pair
+     * -------------
+     * if the variant is 'Color:Red/', it means that the user only selected the parent variant
+     * If the variant is 'Color:Red/Size:', it means that the user selected the parent variant and the child variant
+     * --------------------------------------------------------------------
+     * Purpose of variant_key is to know the variant_val is in the same key or not
+     * if it is same, then don't insert next to /, e.g 'Color:Red/Blue' is wrong
+     * if it is not same, then insert next to /, e.g 'Color:Red/Size:Small'
+     * --------------------------------------------------------------------
+     * The keyPattern will produce 3 groups:
+     * 1. Category key (e.g. Color),
+     * 2. Variant key (e.g. Red),
+     * 3. Variant value (e.g. Size:Small)
+     */
     const handleCheckboxChange = ({
         main_product_title,
         variant: { current_variant_val = undefined, current_variant_key = undefined } = {},
     }) => {
         if (!current_variant_val && main_product_title) {
             setMainProductTitleState(prev_prod_title => {
-                // If the main_product_title already exists, remove it from the selectedVariants array and mainProductTitle array
                 if (prev_prod_title.includes(main_product_title)) {
-                    // Totally remove child variants when we uncheck the main product title
                     setSelectedVariantsState(prevSelectedVariants => {
-                        return prevSelectedVariants.filter(item => !Object.keys(item).includes(main_product_title));
+                        return prevSelectedVariants.filter(item => Object.keys(item)[0] !== main_product_title);
                     });
                     return prev_prod_title.filter(title => title !== main_product_title);
                 }
-                // If the main_product_title doesn't exist, add it to the mainProductTitle array
                 return [...prev_prod_title, main_product_title];
             });
             return;
         }
 
+        const selected_variants_key = Object.keys(productVariationsData).find(key =>
+            Object.values(productVariationsData[key]).includes(current_variant_val),
+        );
+
         setSelectedVariantsState(prevSelectedVariants => {
-            // Check if the main_product_title already exists in the selectedVariants array
-            const existingIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
+            const existingVariantIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
+            if (existingVariantIndex !== -1) {
+                const updatedVariants = { ...prevSelectedVariants[existingVariantIndex][main_selected_prod_key] };
+                const updatedVariantsForKey = { ...updatedVariants[selected_variants_key] };
 
-            /**
-             * I want to match when variant only have partial value, e.g. 'Color:Red/' or 'Color:Red/Size:'
-             * It means that the current selected variant is truly incomplete yet, and need another pair
-             * -------------
-             * if the variant is 'Color:Red/', it means that the user only selected the parent variant
-             * If the variant is 'Color:Red/Size:', it means that the user selected the parent variant and the child variant
-             * --------------------------------------------------------------------
-             * Purpose of variant_key is to know the variant_val is in the same key or not
-             * if it is same, then don't insert next to /, e.g 'Color:Red/Blue' is wrong
-             * if it is not same, then insert next to /, e.g 'Color:Red/Size:Small'
-             * --------------------------------------------------------------------
-             * The keyPattern will produce 3 groups:
-             * 1. Category key (e.g. Color),
-             * 2. Variant key (e.g. Red),
-             * 3. Variant value (e.g. Size:Small)
-             */
-            if (existingIndex !== -1) {
-                const existing_product = prevSelectedVariants[existingIndex];
-                let existing_variant_keysvals = existing_product[main_selected_prod_key];
-
-                let matched_condition = '';
-                let existing_variant_val = '';
-                let existing_variant_key = '';
-
-                existing_variant_keysvals.some((existing_variant_keyval, index, array) => {
-                    const existing_v_keysvals_keyonly = Object.keys(existing_variant_keyval)[0];
-                    const keyval_segments = existing_v_keysvals_keyonly?.split('/');
-                    keyval_segments.forEach((segment, index) => {
-                        const [v_key, v_val]= segment.split(':');
-                        if (segment.includes(current_variant_key)) {
-                            existing_variant_val = segment;
-                            existing_variant_key = current_variant_key;
-                        }
-                    });
-
-
-                    const is_same_variant_key = match[1] === current_variant_key;
-                    const variant_value1 = match[2];
-                    const is_empty_variant_value2 = match[3] === '';
-
-                    existing_variant_val = variant_value1;
-                    existing_variant_key = match[1];
-                    // This is to ensure the loop continues if certain there's matched value
-                    const check_vval_does_exist = existing_variant_keysvals.some(obj => Object.keys(obj)[0].includes(current_variant_val));
-                    const check_vval_all_occupied = existing_variant_keysvals.every(key_val => {
-                        const part = Object.keys(key_val)[0].split('/')
-                        return part[part.length - 1] !== '';
-                    });
-
-                    if (is_same_variant_key) {
-                        if (variant_value1 === current_variant_val) {
-                            matched_condition = 'delete_existing_entry';
-                            return true;
-                        } else if (variant_value1 !== current_variant_val && !check_vval_does_exist) {
-                            matched_condition = 'add_new_variant_key';
-                            return true;
-                        }
-                    } else if (!is_same_variant_key && check_vval_all_occupied) {
-                        matched_condition = 'add_same_vkey_diff_vval';
-                        return true;
-                    }
-
-                    const isLastEntry = index === array.length - 1;
-
-                    if (isLastEntry && !is_same_variant_key && is_empty_variant_value2) {
-                        matched_condition = 'insert_next_to_slash';
-                        existing_variant_val = match[0];
-                        delete existing_variant_keysvals[index];
-                        return true;
-                    }
-
-                    return false;
-                });
-
-                switch (matched_condition) {
-                    case 'insert_next_to_slash':
-                        const combined_variants_key = [existing_variant_val, `${current_variant_key}:${current_variant_val}`].join('');
-                        existing_variant_keysvals.push({ [combined_variants_key]: { price: '', quantity: '' } });
-
-                        break;
-                    case 'add_new_variant_key':
-                        existing_variant_keysvals.push({
-                            [`${current_variant_key}:${current_variant_val}/`]: { price: '', quantity: '' },
-                        });
-                        break;
-                    case 'delete_existing_entry':
-                        const newVariantKeysVals = existing_variant_keysvals.filter(existing_variant_keyval => {
-                            return !Object.keys(existing_variant_keyval)[0].includes(current_variant_val);
-                        });
-                        const newProduct = { ...existing_product, [main_selected_prod_key]: newVariantKeysVals };
-                        return prevSelectedVariants.map(item => (item === existing_product ? newProduct : item));
-                    case 'add_same_vkey_diff_vval':
-                        existing_variant_keysvals.push({
-                            [`${existing_variant_key}:${existing_variant_val}/${current_variant_key}:${current_variant_val}`]: { price: '', quantity: '' },
-                        });
-                        break;
-                    default:
-                        // Handle default case
-                        break;
+                if (updatedVariantsForKey.hasOwnProperty(current_variant_val)) {
+                    delete updatedVariantsForKey[current_variant_val];
+                } else {
+                    updatedVariantsForKey[current_variant_val] = {};
                 }
+
+                if (Object.keys(updatedVariantsForKey).length === 0) {
+                    delete updatedVariants[selected_variants_key];
+                } else {
+                    updatedVariants[selected_variants_key] = updatedVariantsForKey;
+                }
+
+                if (Object.keys(updatedVariants).length === 0) {
+                    prevSelectedVariants.splice(existingVariantIndex, 1);
+                } else {
+                    prevSelectedVariants[existingVariantIndex][main_selected_prod_key] = updatedVariants;
+                }
+
                 return [...prevSelectedVariants];
             } else {
-                // If main_selected_prod_key doesn't exist, add it to the selected_variants_key array
                 return [
                     ...prevSelectedVariants,
                     {
-                        [main_selected_prod_key]: [
-                            { [`${current_variant_key}:${current_variant_val}/`]: { price: '', quantity: '' } },
-                        ],
-                    },
+                        [main_selected_prod_key]: {
+                            [selected_variants_key]: {
+                                [current_variant_val]: {}
+                            }
+                        }
+                    }
                 ];
             }
         });
     };
+
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);
@@ -196,9 +135,10 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     <Checkbox.Root
                         className="w-4 h-4 text-blue-400 bg-white-200 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
                         checked={selectedVariantsState.some(v => {
-                            return v[main_selected_prod_key]?.some(variant =>
-                                Object.keys(variant)[0].includes(`${current_variant_key}:${current_variant_val}/`)
+                            const selected_variants_key = Object.keys(productVariationsData).find(key =>
+                                Object.values(productVariationsData[key]).includes(current_variant_val),
                             );
+                            return v[main_selected_prod_key]?.[selected_variants_key]?.includes(current_variant_val);
                         })}
                         onCheckedChange={() =>
                             handleCheckboxChange({
@@ -219,6 +159,8 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 </div>
             </li>
         ));
+
+        
 
     return (
         <>
