@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import * as Checkbox from '@radix-ui/react-checkbox';
 import useStorage from '../../../../shared/hooks/useStorage';
 import dataStore from '../../../../shared/storages/reviewItemSkuBase';
@@ -60,6 +60,22 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
      * 2. Variant key (e.g. Red),
      * 3. Variant value (e.g. Size:Small)
      */
+
+    const findDeepestEmptyObject = (obj, path = []) => {
+        let emptyKey = null;
+        for (let key in obj) {
+            if (typeof obj[key] === 'object' && obj[key] !== null) {
+                if (Object.keys(obj[key]).length === 0) {
+                    emptyKey = key;
+                } else {
+                    let result = findDeepestEmptyObject(obj[key], [...path, key]);
+                    if (result) return result;
+                }
+            }
+        }
+        return emptyKey ? [...path, emptyKey] : null;
+    }
+
     const handleCheckboxChange = ({
         main_product_title,
         variant: { current_variant_val = undefined, current_variant_key = undefined } = {},
@@ -77,41 +93,75 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             return;
         }
 
-        const selected_variants_key = Object.keys(productVariationsData).find(key =>
-            Object.values(productVariationsData[key]).includes(current_variant_val),
-        );
+        // const current_variant_key = Object.keys(productVariationsData).find(key =>
+        //     Object.values(productVariationsData[key]).includes(current_variant_val),
+        // );
 
         setSelectedVariantsState(prevSelectedVariants => {
-            const existingVariantIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
-            if (existingVariantIndex !== -1) {
-                const updatedVariants = { ...prevSelectedVariants[existingVariantIndex][main_selected_prod_key] };
-                const updatedVariantsForKey = { ...updatedVariants[selected_variants_key] };
+            const existingIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
 
-                if (updatedVariantsForKey.hasOwnProperty(current_variant_val)) {
-                    delete updatedVariantsForKey[current_variant_val];
+            if (existingIndex !== -1) {
+                const existingProduct = prevSelectedVariants[existingIndex];
+                const existingProductValue = existingProduct[main_selected_prod_key];
+
+                // Check if the selected_variants_key already exists
+                if (existingProductValue.hasOwnProperty(current_variant_key)) {
+                    // Check if the current_variant_val already exists for the selected_variants_key
+                    if (!existingProductValue[current_variant_key].hasOwnProperty(current_variant_val)) {
+                        existingProductValue[current_variant_key][current_variant_val] = {};
+                    }
                 } else {
-                    updatedVariantsForKey[current_variant_val] = {};
+                    const deepestEmptyObjectKeyPath = findDeepestEmptyObject(existingProductValue);
+
+                    if (deepestEmptyObjectKeyPath) {
+                        let lastObject = deepestEmptyObjectKeyPath.slice(0, -1)
+                            .reduce((obj, key) => obj[key], existingProductValue);
+
+                        // Insert the new data into the empty object
+                        const lastKey = Object.keys(productVariationsData).pop();
+                        if (current_variant_key === lastKey) {
+                            lastObject[deepestEmptyObjectKeyPath[deepestEmptyObjectKeyPath.length - 1]] = {
+                                [current_variant_val]: {
+                                    price: '', // Add your price value here
+                                    quantity: '' // Add your quantity value here
+                                }
+                            };
+                        } else {
+                            lastObject[deepestEmptyObjectKeyPath[deepestEmptyObjectKeyPath.length - 1]] = {
+                                [current_variant_val]: {}
+                            };
+                        }
+                    } else {
+                        const lastKey = Object.keys(productVariationsData).pop();
+                        if (current_variant_key === lastKey) {
+                            existingProductValue[current_variant_key] = {
+                                [current_variant_val]: {
+                                    price: '', // Add your price value here
+                                    quantity: '' // Add your quantity value here
+                                }
+                            };
+                        } else {
+                            existingProductValue[current_variant_key] = {
+                                [current_variant_val]: {}
+                            };
+                        }
+                    }
                 }
 
-                if (Object.keys(updatedVariantsForKey).length === 0) {
-                    delete updatedVariants[selected_variants_key];
-                } else {
-                    updatedVariants[selected_variants_key] = updatedVariantsForKey;
-                }
+                const newProduct = {
+                    [main_selected_prod_key]: existingProductValue
+                };
 
-                if (Object.keys(updatedVariants).length === 0) {
-                    prevSelectedVariants.splice(existingVariantIndex, 1);
-                } else {
-                    prevSelectedVariants[existingVariantIndex][main_selected_prod_key] = updatedVariants;
-                }
+                const newSelectedVariants = [...prevSelectedVariants];
+                newSelectedVariants[existingIndex] = newProduct;
 
-                return [...prevSelectedVariants];
+                return newSelectedVariants;
             } else {
                 return [
                     ...prevSelectedVariants,
                     {
                         [main_selected_prod_key]: {
-                            [selected_variants_key]: {
+                            [current_variant_key]: {
                                 [current_variant_val]: {}
                             }
                         }
@@ -121,6 +171,17 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         });
     };
 
+    const isVariantValueSelected = (selectedVariantsState, mainProductTitle, variantKey, variantValue) => {
+        return selectedVariantsState.some(item => {
+            const mainTitle = Object.keys(item)[0];
+            if (mainTitle !== mainProductTitle) {
+                return false;
+            }
+            const selectedVariants = item[mainTitle];
+            const selectedVariant = selectedVariants[variantKey];
+            return selectedVariant && selectedVariant.hasOwnProperty(variantValue);
+        });
+    };
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);
@@ -134,12 +195,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 <div className="flex items-center ps-3">
                     <Checkbox.Root
                         className="w-4 h-4 text-blue-400 bg-white-200 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                        checked={selectedVariantsState.some(v => {
-                            const selected_variants_key = Object.keys(productVariationsData).find(key =>
-                                Object.values(productVariationsData[key]).includes(current_variant_val),
-                            );
-                            return v[main_selected_prod_key]?.[selected_variants_key]?.includes(current_variant_val);
-                        })}
+                        checked={isVariantValueSelected(selectedVariantsState, main_selected_prod_key, current_variant_key, current_variant_val)}
                         onCheckedChange={() =>
                             handleCheckboxChange({
                                 main_product_title: undefined,
@@ -160,7 +216,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             </li>
         ));
 
-        
+
 
     return (
         <>
