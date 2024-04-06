@@ -61,19 +61,29 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
      * 3. Variant value (e.g. Size:Small)
      */
 
-    const findDeepestEmptyObject = (obj, path = []) => {
+    const findParentOfDeepestNonEmptyObject = (obj, path = [], parentKey = null) => {
         let emptyKey = null;
+        let lastNonEmptyKey = null;
         for (let key in obj) {
             if (typeof obj[key] === 'object' && obj[key] !== null) {
                 if (Object.keys(obj[key]).length === 0) {
                     emptyKey = key;
                 } else {
-                    let result = findDeepestEmptyObject(obj[key], [...path, key]);
+                    lastNonEmptyKey = key;
+                    let result = findParentOfDeepestNonEmptyObject(obj[key], [...path, key]);
                     if (result) return result;
                 }
             }
         }
-        return emptyKey ? [...path, emptyKey] : null;
+        if (emptyKey) {
+            return [...path, emptyKey];
+        } else if (lastNonEmptyKey) {
+            // Remove the lastNonEmptyKey from the path to get its parent
+            path.pop();
+            return path;
+        } else {
+            return null;
+        }
     }
 
     const handleCheckboxChange = ({
@@ -101,55 +111,45 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             const existingIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
 
             if (existingIndex !== -1) {
-                const existingProduct = prevSelectedVariants[existingIndex];
-                const existingProductValue = existingProduct[main_selected_prod_key];
+                const existing_product_obj = prevSelectedVariants[existingIndex];
+                const existing_variant_objs = existing_product_obj[main_selected_prod_key];
 
                 // Check if the selected_variants_key already exists
-                if (existingProductValue.hasOwnProperty(current_variant_key)) {
+                if (existing_variant_objs.hasOwnProperty(current_variant_key)) {
                     // Check if the current_variant_val already exists for the selected_variants_key
-                    if (!existingProductValue[current_variant_key].hasOwnProperty(current_variant_val)) {
-                        existingProductValue[current_variant_key][current_variant_val] = {};
+                    if (!existing_variant_objs[current_variant_key].hasOwnProperty(current_variant_val)) {
+                        existing_variant_objs[current_variant_key][current_variant_val] = {};
                     }
                 } else {
-                    const deepestEmptyObjectKeyPath = findDeepestEmptyObject(existingProductValue);
+                    const deepestEmptyObjectKeyPath = findParentOfDeepestNonEmptyObject(existing_variant_objs);
+                    const lastKey = Object.keys(productVariationsData).pop();
+                    let targetObj = deepestEmptyObjectKeyPath?.slice(0, -1)
+                        .reduce((obj, key) => obj[key], existing_variant_objs)
+
+                    let targetKey;
 
                     if (deepestEmptyObjectKeyPath) {
-                        let lastObject = deepestEmptyObjectKeyPath.slice(0, -1)
-                            .reduce((obj, key) => obj[key], existingProductValue);
-
-                        // Insert the new data into the empty object
-                        const lastKey = Object.keys(productVariationsData).pop();
-                        if (current_variant_key === lastKey) {
-                            lastObject[deepestEmptyObjectKeyPath[deepestEmptyObjectKeyPath.length - 1]] = {
-                                [current_variant_val]: {
-                                    price: '', // Add your price value here
-                                    quantity: '' // Add your quantity value here
-                                }
-                            };
-                        } else {
-                            lastObject[deepestEmptyObjectKeyPath[deepestEmptyObjectKeyPath.length - 1]] = {
-                                [current_variant_val]: {}
-                            };
-                        }
+                        targetKey = deepestEmptyObjectKeyPath[deepestEmptyObjectKeyPath.length - 1];
                     } else {
-                        const lastKey = Object.keys(productVariationsData).pop();
-                        if (current_variant_key === lastKey) {
-                            existingProductValue[current_variant_key] = {
-                                [current_variant_val]: {
-                                    price: '', // Add your price value here
-                                    quantity: '' // Add your quantity value here
-                                }
-                            };
-                        } else {
-                            existingProductValue[current_variant_key] = {
-                                [current_variant_val]: {}
-                            };
-                        }
+                        targetKey = current_variant_key;
+                    }
+
+                    if (current_variant_key === lastKey) {
+                        targetObj[targetKey] = {
+                            [current_variant_val]: {
+                                price: '', // Add your price value here
+                                quantity: '' // Add your quantity value here
+                            }
+                        };
+                    } else {
+                        targetObj[targetKey] = {
+                            [current_variant_val]: {}
+                        };
                     }
                 }
 
                 const newProduct = {
-                    [main_selected_prod_key]: existingProductValue
+                    [main_selected_prod_key]: existing_variant_objs
                 };
 
                 const newSelectedVariants = [...prevSelectedVariants];
