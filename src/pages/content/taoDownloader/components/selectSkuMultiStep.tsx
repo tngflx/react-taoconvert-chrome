@@ -65,7 +65,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         if (Object.keys(obj).length === 0) {
             return path;
         }
-    
+
         for (const [key, value] of Object.entries(obj)) {
             if (typeof value === 'object') {
                 const newPath = findFirstEmptyObjectDFS(value, [...path, key]);
@@ -74,11 +74,11 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 }
             }
         }
-    
+
         return null;
     };
-    
-    
+
+
 
     const handleCheckboxChange = ({
         main_product_title,
@@ -108,8 +108,9 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             if (existingIndex !== -1) {
                 const existing_product_obj = prevSelectedVariants[existingIndex];
                 const existing_variant_objs = existing_product_obj[main_selected_prod_key];
-        
-        
+                const last_key_not_nested = Object.keys(productVariationsData).pop();
+                const is_existing_have_current_key = Object.keys(existing_variant_objs).find(key => key.includes(current_variant_key));
+
                 // Check if the variant key already exists
                 if (existing_variant_objs.hasOwnProperty(variantKey)) {
                     // Variant key exists, update its price and quantity
@@ -119,30 +120,30 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     const deepestEmptyObjectKeyPath = findFirstEmptyObjectDFS(existing_variant_objs);
                     let targetObj = existing_variant_objs;
                     let targetKey = variantKey;
-        
+
                     // Traverse to the deepest empty object
                     if (deepestEmptyObjectKeyPath) {
                         targetObj = deepestEmptyObjectKeyPath.slice(0, -1).reduce((obj, key) => obj[key], existing_variant_objs);
                         targetKey = deepestEmptyObjectKeyPath[Object.keys(deepestEmptyObjectKeyPath).length - 1];
-                    }else{
-                        targetObj = existing_variant_objs[Object.keys(existing_variant_objs).pop()];
+                    } else if (!deepestEmptyObjectKeyPath && !is_existing_have_current_key) {
+                        targetKey = Object.keys(existing_variant_objs).pop();
                     }
-        
-                    // If the variant key is the last key, add price and quantity
-                    if (targetKey === variantKey) {
-                        targetObj[targetKey] = { price: '', quantity: '' };
+
+                    // If the current_variant_key is the last key, add price and quantity
+                    if (last_key_not_nested === current_variant_key) {
+                        targetObj[targetKey][variantKey] = { price: '', quantity: '' };
                     } else {
-                        targetObj[targetKey] = { [variantKey]: { price: '', quantity: '' } };
+                        targetObj[targetKey] = {};
                     }
                 }
-        
+
                 const newProduct = {
                     [main_selected_prod_key]: existing_variant_objs
                 };
-        
+
                 const newSelectedVariants = [...prevSelectedVariants];
                 newSelectedVariants[existingIndex] = newProduct;
-        
+
                 return newSelectedVariants;
             } else {
                 // Product doesn't exist in the state, add it with the variant key and its price and quantity
@@ -156,7 +157,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 ];
             }
         });
-        
+
     };
 
     const isVariantValueSelected = (selectedVariantsState, mainProductTitle, variantKey, variantValue) => {
