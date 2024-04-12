@@ -3,6 +3,8 @@ import * as Checkbox from '@radix-ui/react-checkbox';
 import useStorage from '../../../../shared/hooks/useStorage';
 import dataStore from '../../../../shared/storages/reviewItemSkuBase';
 import { CheckIcon } from '@radix-ui/react-icons';
+import { ObjectMgr } from '../../utils/objectMgr';
+const objectMgr = new ObjectMgr();
 
 const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     const data = useStorage(dataStore);
@@ -61,25 +63,6 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
      * 3. Variant value (e.g. Size:Small)
      */
 
-    const findFirstEmptyObjectDFS = (obj, path = []) => {
-        if (Object.keys(obj).length === 0) {
-            return path;
-        }
-
-        for (const [key, value] of Object.entries(obj)) {
-            if (typeof value === 'object') {
-                const newPath = findFirstEmptyObjectDFS(value, [...path, key]);
-                if (newPath !== null) {
-                    return newPath;
-                }
-            }
-        }
-
-        return null;
-    };
-
-
-
     const handleCheckboxChange = ({
         main_product_title,
         variant: { current_variant_val = undefined, current_variant_key = undefined } = {},
@@ -117,7 +100,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     existing_variant_objs[variantKey] = { price: '', quantity: '' };
                 } else {
                     // Variant key doesn't exist, add it with price and quantity
-                    const deepestEmptyObjectKeyPath = findFirstEmptyObjectDFS(existing_variant_objs);
+                    const deepestEmptyObjectKeyPath = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
                     let targetObj = existing_variant_objs;
                     let targetKey = variantKey;
 
