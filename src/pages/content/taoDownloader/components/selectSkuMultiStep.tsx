@@ -97,18 +97,21 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 // Check if the variant key already exists
                 if (existing_variant_objs.hasOwnProperty(variantKey)) {
                     // Variant key exists, update its price and quantity
-                    existing_variant_objs[variantKey] = { price: '', quantity: '' };
+                    const updatedVariantObjs = Object.fromEntries(
+                        Object.entries(existing_variant_objs).filter(([key]) => key === variantKey)
+                    );
+                    existing_product_obj[main_selected_prod_key] = { ...updatedVariantObjs };
                 } else {
                     // Variant key doesn't exist, add it with price and quantity
-                    const deepestEmptyObjectKeyPath = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
+                    const deepestObjectWEmpty = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
                     let targetObj = existing_variant_objs;
                     let targetKey = variantKey;
 
                     // Traverse to the deepest empty object
-                    if (deepestEmptyObjectKeyPath) {
-                        targetObj = deepestEmptyObjectKeyPath.slice(0, -1).reduce((obj, key) => obj[key], existing_variant_objs);
-                        targetKey = deepestEmptyObjectKeyPath[Object.keys(deepestEmptyObjectKeyPath).length - 1];
-                    } else if (!deepestEmptyObjectKeyPath && !is_existing_have_current_key) {
+                    if (deepestObjectWEmpty) {
+                        targetObj = deepestObjectWEmpty;
+                        targetKey = deepestObjectWEmpty[Object.keys(deepestObjectWEmpty).length - 1];
+                    } else if (!deepestObjectWEmpty && !is_existing_have_current_key) {
                         targetKey = Object.keys(existing_variant_objs).pop();
                     }
 
