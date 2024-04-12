@@ -1,4 +1,3 @@
-
 export class ObjectMgr {
     static FIND_EMPTY_VALUE = 'findEmptyValue';
     static FIND_MATCH_VALUE = 'findMatchValue';
@@ -18,9 +17,10 @@ export class ObjectMgr {
                             }
                             break;
                         case ObjectMgr.FIND_MATCH_VALUE:
-                            if (objValue === value) {
+                            if (Object.keys(objValue).some(key => key === value)) {
                                 return currentObj;
                             }
+
                             break;
                     }
                     if (typeof objValue === 'object') {

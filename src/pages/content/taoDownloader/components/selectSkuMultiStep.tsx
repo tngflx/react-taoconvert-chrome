@@ -104,13 +104,13 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 } else {
                     // Variant key doesn't exist, add it with price and quantity
                     const deepestObjectWEmpty = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
-                    let targetObj = existing_variant_objs;
+                    let targetObj = deepestObjectWEmpty || existing_variant_objs;
                     let targetKey = variantKey;
 
                     // Traverse to the deepest empty object
                     if (deepestObjectWEmpty) {
-                        targetObj = deepestObjectWEmpty;
-                        targetKey = deepestObjectWEmpty[Object.keys(deepestObjectWEmpty).length - 1];
+                        const keys = Object.keys(deepestObjectWEmpty);
+                        targetKey = keys.length > 0 ? keys[keys.length - 1] : variantKey;
                     } else if (!deepestObjectWEmpty && !is_existing_have_current_key) {
                         targetKey = Object.keys(existing_variant_objs).pop();
                     }
@@ -146,15 +146,15 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
     };
 
-    const isVariantValueSelected = (selectedVariantsState, mainProductTitle, variantKey, variantValue) => {
+    const isVariantValueSelected = (selectedVariantsState, variantKey) => {
         return selectedVariantsState.some(item => {
             const mainTitle = Object.keys(item)[0];
-            if (mainTitle !== mainProductTitle) {
+            if (mainTitle !== main_selected_prod_key) {
                 return false;
             }
             const selectedVariants = item[mainTitle];
-            const selectedVariant = selectedVariants[variantKey];
-            return selectedVariant && selectedVariant.hasOwnProperty(variantValue);
+            const findobj = objectMgr.findObject({ obj: selectedVariants, value: variantKey, flag: ObjectMgr.FIND_MATCH_VALUE });
+            return selectedVariants.hasOwnProperty(variantKey) ?? findobj
         });
     };
 
@@ -170,7 +170,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 <div className="flex items-center ps-3">
                     <Checkbox.Root
                         className="w-4 h-4 text-blue-400 bg-white-200 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                        checked={isVariantValueSelected(selectedVariantsState, main_selected_prod_key, current_variant_key, current_variant_val)}
+                        checked={isVariantValueSelected(selectedVariantsState, `${current_variant_key}/${current_variant_val}`)}
                         onCheckedChange={() =>
                             handleCheckboxChange({
                                 main_product_title: undefined,
