@@ -80,10 +80,6 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             return;
         }
 
-        // const current_variant_key = Object.keys(productVariationsData).find(key =>
-        //     Object.values(productVariationsData[key]).includes(current_variant_val),
-        // );
-
         setSelectedVariantsState(prevSelectedVariants => {
             const existingIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
             const variantKey = current_variant_key ? `${current_variant_key}/${current_variant_val}` : current_variant_val;
@@ -154,7 +150,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             }
             const selectedVariants = item[mainTitle];
             const findobj = objectMgr.findObject({ obj: selectedVariants, value: variantKey, flag: ObjectMgr.FIND_MATCH_VALUE });
-            return selectedVariants.hasOwnProperty(variantKey) ?? findobj
+            return selectedVariants.hasOwnProperty(variantKey) || findobj
         });
     };
 
@@ -196,7 +192,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     return (
         <>
             <h3 className="mb-4 font-semibold text-gray-900">Choose SKU Texts:</h3>
-            <div className="flex flex-row">
+            <div className="flex flex-row space-x-4">
                 <ul className="w-56 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     {data.remappedSkuBase.map(({ main_product_title }, index) => (
                         <div className="flex items-center ps-3" key={index}>
@@ -221,7 +217,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     Object.entries(productVariationsData).map(([key, variation], index) => (
                         <ul
                             key={index}
-                            className="w-56 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            className="w-56 p-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             <li>
                                 <label className="w-full py-3 ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">{key}</label>
                                 {renderCheckboxes(Object.values(variation), key)}
