@@ -42,10 +42,8 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     }, [data.remappedSkuBase]);
 
     const [selectedVariantsState, setSelectedVariantsState] = useState([]);
-    const [mainProductTitleState, setMainProductTitleState] = useState([]);
-    const main_selected_prod_key =
-        mainProductTitleState.length > 0 ? mainProductTitleState[mainProductTitleState.length - 1] : null;
-
+    const [ObjToObserveState, setObjToObserveState] = useState({});
+    const main_selected_prod_key = ObjToObserveState?.["main_product_title"] || '';
     /**
      * I want to match when variant only have partial value, e.g. 'Color:Red/' or 'Color:Red/Size:'
      * It means that the current selected variant is truly incomplete yet, and need another pair
@@ -68,14 +66,20 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         variant: { current_variant_val = undefined, current_variant_key = undefined } = {},
     }) => {
         if (!current_variant_val && main_product_title) {
-            setMainProductTitleState(prev_prod_title => {
-                if (prev_prod_title.includes(main_product_title)) {
+            setObjToObserveState(prev_obj_to_observe => {
+                let newObjToObserve = { ...prev_obj_to_observe };
+
+                if (newObjToObserve?.["main_product_title"] === main_product_title) {
+                    newObjToObserve["main_product_title"] = {};
                     setSelectedVariantsState(prevSelectedVariants => {
                         return prevSelectedVariants.filter(item => Object.keys(item)[0] !== main_product_title);
                     });
-                    return prev_prod_title.filter(title => title !== main_product_title);
+                } else {
+                    newObjToObserve = {
+                        main_product_title,
+                    };
                 }
-                return [...prev_prod_title, main_product_title];
+                return newObjToObserve;
             });
             return;
         }
@@ -119,6 +123,14 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     }
                 }
 
+                setObjToObserveState(prev_obj_to_observe => {
+                    const parent_key_index = Object.keys(productVariationsData).findIndex(key => key === current_variant_key);
+                    // const parentKey = parent_key_index !== -1 ? 
+                    return Object.assign({}, prev_obj_to_observe, {
+                        parentKey: parentKey || current_variant_val,
+                    });
+                })
+
                 const newProduct = {
                     [main_selected_prod_key]: existing_variant_objs
                 };
@@ -156,7 +168,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);
-        console.log('mainProductTitle', mainProductTitleState);
+        console.log('objToObserve', ObjToObserveState);
         // onSelectSkuText(selectedVariants);
     };
 
@@ -198,7 +210,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         <div className="flex items-center ps-3" key={index}>
                             <Checkbox.Root
                                 className="w-4 h-4 text-blue-400 bg-green-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                                checked={mainProductTitleState?.includes(main_product_title)}
+                                checked={ObjToObserveState?.["main_product_title"] === main_product_title}
                                 onCheckedChange={() => handleCheckboxChange({ main_product_title, variant: undefined })}
                                 id={`checkbox_${main_product_title}_${index}`}>
                                 <Checkbox.Indicator className="text-green">
@@ -213,7 +225,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         </div>
                     ))}
                 </ul>
-                {mainProductTitleState.length > 0 &&
+                {ObjToObserveState?.["main_product_title"] == main_selected_prod_key &&
                     Object.entries(productVariationsData).map(([key, variation], index) => (
                         <ul
                             key={index}
