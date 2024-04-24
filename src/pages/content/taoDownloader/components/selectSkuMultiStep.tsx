@@ -121,15 +121,14 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     } else {
                         targetObj[targetKey] = {};
                     }
+
+                    setObjToObserveState(prev_obj_to_observe => {
+                        return Object.assign({}, prev_obj_to_observe, {
+                            parentKey: targetKey
+                        });
+                    })
                 }
 
-                setObjToObserveState(prev_obj_to_observe => {
-                    const parent_key_index = Object.keys(productVariationsData).findIndex(key => key === current_variant_key);
-                    // const parentKey = parent_key_index !== -1 ? 
-                    return Object.assign({}, prev_obj_to_observe, {
-                        parentKey: parentKey || current_variant_val,
-                    });
-                })
 
                 const newProduct = {
                     [main_selected_prod_key]: existing_variant_objs
@@ -141,6 +140,12 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 return newSelectedVariants;
             } else {
                 // Product doesn't exist in the state, add it with the variant key and its price and quantity
+                setObjToObserveState(prev_obj_to_observe => {
+                    return Object.assign({}, prev_obj_to_observe, {
+                        parentKey: variantKey
+                    });
+                })
+
                 return [
                     ...prevSelectedVariants,
                     {
@@ -154,17 +159,38 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
     };
 
-    const isVariantValueSelected = (selectedVariantsState, variantKey) => {
-        return selectedVariantsState.some(item => {
+    const isVariantValueSelected = (variantKey) => {
+        return selectedVariantsState.some((item) => {
             const mainTitle = Object.keys(item)[0];
             if (mainTitle !== main_selected_prod_key) {
                 return false;
             }
             const selectedVariants = item[mainTitle];
-            const findobj = objectMgr.findObject({ obj: selectedVariants, value: variantKey, flag: ObjectMgr.FIND_MATCH_VALUE });
-            return selectedVariants.hasOwnProperty(variantKey) || findobj
+            if (!selectedVariants.hasOwnProperty(variantKey)) {
+                return false;
+            }
+    
+            const parentKey = ObjToObserveState?.["parentKey"] || '';
+            const parentVariant = selectedVariants?.[parentKey];
+    
+            // If parent variant exists and it contains the variant key, return true
+            if (parentVariant && parentVariant.hasOwnProperty(variantKey)) {
+                return true;
+            }
+    
+            // If parent variant doesn't exist or doesn't contain the variant key, check nested objects
+            for (const key in selectedVariants) {
+                if (selectedVariants.hasOwnProperty(key)) {
+                    const nestedVariant = selectedVariants[key];
+                    if (nestedVariant && nestedVariant.hasOwnProperty(variantKey)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         });
     };
+    
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);
@@ -178,7 +204,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 <div className="flex items-center ps-3">
                     <Checkbox.Root
                         className="w-4 h-4 text-blue-400 bg-white-200 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                        checked={isVariantValueSelected(selectedVariantsState, `${current_variant_key}/${current_variant_val}`)}
+                        checked={isVariantValueSelected(`${current_variant_key}/${current_variant_val}`)}
                         onCheckedChange={() =>
                             handleCheckboxChange({
                                 main_product_title: undefined,
