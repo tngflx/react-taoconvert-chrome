@@ -160,37 +160,35 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     };
 
     const isVariantValueSelected = (variantKey) => {
-        return selectedVariantsState.some((item) => {
+        let deepestMatchFound = false;
+
+        const checkNestedVariant = (selectedVariants) => {
+            Object.keys(selectedVariants).forEach((key) => {
+                if (key === variantKey) {
+                    deepestMatchFound = true;
+                    return;
+                }
+                checkNestedVariant(selectedVariants[key]);
+            });
+        };
+
+        selectedVariantsState.some((item) => {
             const mainTitle = Object.keys(item)[0];
             if (mainTitle !== main_selected_prod_key) {
                 return false;
             }
             const selectedVariants = item[mainTitle];
-            if (!selectedVariants.hasOwnProperty(variantKey)) {
-                return false;
-            }
-    
-            const parentKey = ObjToObserveState?.["parentKey"] || '';
-            const parentVariant = selectedVariants?.[parentKey];
-    
-            // If parent variant exists and it contains the variant key, return true
-            if (parentVariant && parentVariant.hasOwnProperty(variantKey)) {
-                return true;
-            }
-    
-            // If parent variant doesn't exist or doesn't contain the variant key, check nested objects
-            for (const key in selectedVariants) {
-                if (selectedVariants.hasOwnProperty(key)) {
-                    const nestedVariant = selectedVariants[key];
-                    if (nestedVariant && nestedVariant.hasOwnProperty(variantKey)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
+            checkNestedVariant(selectedVariants);
         });
+
+        // If the variant key does not exist in the selectedVariantsState, return false
+        if (!deepestMatchFound) {
+            return false;
+        }
+
+        return deepestMatchFound;
     };
-    
+
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);

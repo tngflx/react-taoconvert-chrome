@@ -7,7 +7,8 @@ export class queryBuilder extends h5Encryption {
     params: { jsv: string; appKey: string; t: number; v: string; isSec: string; ecode: string; timeout: string; ttid: string; AntiFlood: string; AntiCreep: string; dataType: string; valueType: string; preventFallback: string; type: string; data: string; };
     h5_tk_cookies_string: any;
     fetchOptions: Object;
-    h5_tk_token_array: any[];
+    static h5_tk_token_array: any[] = []; // Static property to share across instances
+
     constructor(url_param_data) {
         super();
 
@@ -29,11 +30,22 @@ export class queryBuilder extends h5Encryption {
             data: JSON.stringify({ ...url_param_data }),
         };
         this.fetchOptions = {};
-        this.h5_tk_token_array;
+    }
+
+    async setH5EncData() {
+        this.h5enc_token = queryBuilder.h5_tk_token_array[0].value.split('_')[0];
+        this.h5enc_time = this.params.t;
+        this.h5enc_data = this.params.data;
+
+        this.h5_tk_cookies_string = queryBuilder.h5_tk_token_array
+            .map(cookie => `${cookie.name}=${cookie.value}`)
+            .join('; ');
     }
 
     async initH5EncDataWithRetries() {
-        if (this.h5_tk_token_array && this.h5_tk_token_array.length > 0) {
+        if (queryBuilder.h5_tk_token_array && queryBuilder.h5_tk_token_array.length > 0) {
+
+            this.setH5EncData();
             return;
         }
         const maxRetries = 3;
@@ -56,27 +68,28 @@ export class queryBuilder extends h5Encryption {
                 });
 
             });
-        };
-
-        while (retries > 0 && (!this.h5_tk_token_array || this.h5_tk_token_array.length === 0)) {
+        }
+        
+        do {
             try {
-                const cookies: any = await new Promise((resolve) => {
-                    chrome.cookies.getAll({ domain: 'taobao.com' }, (result) => {
-                        resolve(result);
-                    });
-                });
+                const cookieStores = await chrome.cookies.getAllCookieStores();
+                const cookiePromises = cookieStores.flatMap(cookieStore => [
+                    new Promise(resolve => {
+                        chrome.cookies.get({ url: 'https://taobao.com', name: '_m_h5_tk', storeId: cookieStore.id }, cookie => {
+                            if (cookie) resolve(cookie);
+                        });
+                    }),
+                    new Promise(resolve => {
+                        chrome.cookies.get({ url: 'https://taobao.com', name: '_m_h5_tk_enc', storeId: cookieStore.id }, cookie => {
+                            if (cookie) resolve(cookie);
+                        });
+                    })
+                ]);
+                queryBuilder.h5_tk_token_array = await Promise.all(cookiePromises);
 
-                this.h5_tk_token_array = cookies
-                    .filter(cookie => cookie.name.includes('m_h5_tk'));
-
-                if (this.h5_tk_token_array.length > 0) {
-                    this.h5enc_token = this.h5_tk_token_array[0].value.split('_')[0];
-                    this.h5enc_time = this.params.t;
-                    this.h5enc_data = this.params.data;
-
-                    this.h5_tk_cookies_string = this.h5_tk_token_array
-                        .map(cookie => `${cookie.name}=${cookie.value}`)
-                        .join('; ');
+                if (queryBuilder.h5_tk_token_array.length > 0) {
+                    // Directly set h5Encryption required properties
+                    this.setH5EncData();
                 }
             } catch (error) {
                 console.error("Error retrieving cookies:", error);
@@ -84,18 +97,15 @@ export class queryBuilder extends h5Encryption {
 
             retries--;
 
-            if (retries > 0 && (!this.h5_tk_token_array || this.h5_tk_token_array.length === 0)) {
+            if (retries > 0 && (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0)) {
                 await refreshWorldPage();
             }
-        }
+        } while (retries > 0 && (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0));
 
-        if (!this.h5_tk_token_array || this.h5_tk_token_array.length === 0) {
+        if (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0) {
             throw new Error(`Failed to retrieve cookies after ${maxRetries} attempts.`);
         }
     }
-
-
-
 
     createFetch() {
         const queryString = this.processQueryString()

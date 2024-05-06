@@ -168,25 +168,24 @@ if (location.href.includes('https://s.taobao.com/')) {
         const converted_price = (original_price * currency_rate).toFixed(2);
 
         const ancestor = price_wrapper_element.closest('a[class^="Card--doubleCardWrapper"]') as HTMLElement;
-        const parent_unwanted_heightstyle= price_wrapper_element.closest('div[class^="Card--doubleCard"]') as HTMLElement;
+        const parent_unwanted_heightstyle = price_wrapper_element.closest('div[class^="Card--doubleCard"]') as HTMLElement;
         parent_unwanted_heightstyle.style.height = 'auto';
         ancestor.style.height = 'fit-content';
 
-        price_int_element.style.fontSize = '17px';
-        price_float_element.style.fontSize = '17px';
+        // price_int_element.style.fontSize = '17px';
+        // price_float_element.style.fontSize = '17px';
         price_wrapper_element.style.height = 'fit-content';
-        price_wrapper_element.style['align-items'] = 'flex-start';
+        // price_wrapper_element.style['align-items'] = 'flex-start';
 
-        const priceSalesSpan = findChildThenParentElbyClassName(price_wrapper_element, 'realSales') as HTMLElement;
-        priceSalesSpan.style['line-height'] = '20px';
-
-        //price_wrapper_element.classList.add('taoconvert_pricebox_container');
+        // const realSalesSpan = findChildThenParentElbyClassName(price_wrapper_element, 'realSales') as HTMLElement;
+        // realSalesSpan.style['line-height'] = '20px';
 
         const newDiv = document.createElement('div');
         newDiv.className = 'taoconvert_pricebox_container';
-        const newDivEl = price_float_element.insertAdjacentElement('afterend', newDiv);
+        newDiv.style['align-self'] = 'flex';
+        const newDivEl = price_wrapper_element.insertAdjacentElement('beforebegin', newDiv);
 
-        render(<PriceBox size="sm" convertedPrice={converted_price} currencyChange={currency_change} />, newDivEl);
+        render(<PriceBox size="md" convertedPrice={converted_price} currencyChange={currency_change} />, newDivEl);
       }
     }
   }
@@ -246,24 +245,27 @@ if (location.href.includes('https://item.taobao.com/')) {
       boxRenderer.removeTrailingTaoConvPricebox();
 
       const itempage_price_elements = document.querySelectorAll("[class^='Price--priceText']");
+
       let itempage_extra_price_el;
       let itempage_origin_price_el;
+      let price_wrapper_el;
 
-      Array.from(itempage_price_elements).forEach(el => {
+      Array.from(itempage_price_elements).find(el => {
         itempage_extra_price_el = findChildThenParentElbyClassName(el, 'extraPrice');
         itempage_origin_price_el = findChildThenParentElbyClassName(el, 'originPrice');
+        price_wrapper_el = el.closest('[class^="Price--root"]');
+        return itempage_extra_price_el || itempage_origin_price_el;
       });
 
       if (itempage_extra_price_el) {
         boxRenderer.removeTrailingTaoConvPricebox();
 
-        const price_wrapper_el = itempage_extra_price_el.closest('[class^="Price--root"]');
-        boxRenderer.createPriceBox(price_wrapper_el, '');
+        boxRenderer.createPriceBox({ price_text_el: itempage_extra_price_el, pricebox_ct_size: 'lg', insert_to_target_el: price_wrapper_el });
       } else if (itempage_origin_price_el) {
         boxRenderer.removeTrailingTaoConvPricebox();
 
         const price_wrapper_el = itempage_origin_price_el.closest('[class^="Price--root"]');
-        boxRenderer.createPriceBox(price_wrapper_el, '');
+        boxRenderer.createPriceBox({ price_text_el: itempage_origin_price_el, pricebox_ct_size: '', insert_to_target_el: price_wrapper_el });
       }
 
       createDownloadListsButton();
@@ -285,11 +287,11 @@ if (location.href.includes('https://item.taobao.com/')) {
         const original_price_element = document.getElementById('J_StrPrice');
 
         if (promo_price_element) {
-          boxRenderer.createPriceBox(original_price_element, 'md');
+          boxRenderer.createPriceBox({ price_text_el: original_price_element, pricebox_ct_size: 'md' });
 
           const promo_price_parent = document.querySelector('div#J_PromoHd');
-          boxRenderer.createPriceBox(promo_price_element, '', promo_price_parent);
-        } else boxRenderer.createPriceBox(original_price_element, 'lg');
+          boxRenderer.createPriceBox({ price_text_el: promo_price_element, pricebox_ct_size: '', insert_to_target_el: promo_price_parent });
+        } else boxRenderer.createPriceBox({ price_text_el: original_price_element, pricebox_ct_size: 'lg' });
       });
     }
   }
@@ -363,7 +365,7 @@ if (urlPattern.test(location.href)) {
         : tmall_extra_price_el.closest('[class^="Price--root"]');
 
       if (salePriceRelativeWrapElement) {
-        boxRenderer.createPriceBox(tmall_extra_price_el, 'lg', salePriceRelativeWrapElement);
+        boxRenderer.createPriceBox({ price_text_el: tmall_extra_price_el, pricebox_ct_size: 'lg', insert_to_target_el: salePriceRelativeWrapElement });
       } else throw Error('no price wrapper element found');
       salePriceRelativeWrapElement.style['margin-bottom'] = '5px';
     } else if (tmall_origin_price_el) {
@@ -384,7 +386,7 @@ if (urlPattern.test(location.href)) {
       const selectedWrapperElement = priceSaleParentElement ? priceSaleParentElement : normalPriceWrapParentElement;
 
       selectedWrapperElement.style['margin-bottom'] = '10px';
-      boxRenderer.createPriceBox(selectedWrapperElement, '');
+      boxRenderer.createPriceBox({ price_text_el: selectedWrapperElement, pricebox_ct_size: '' });
     }
   }
 }
