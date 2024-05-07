@@ -159,16 +159,18 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
     };
 
-    const isVariantValueSelected = (variantKey) => {
+   const isVariantValueSelected = (variantKey) => {
         let deepestMatchFound = false;
 
-        const checkNestedVariant = (selectedVariants) => {
+        const checkNestedVariant = (selectedVariants, currentParentKey) => {
             Object.keys(selectedVariants).forEach((key) => {
-                if (key === variantKey) {
+                if (selectedVariants.hasOwnProperty(variantKey)) {
                     deepestMatchFound = true;
                     return;
                 }
-                checkNestedVariant(selectedVariants[key]);
+                if (key == currentParentKey && selectedVariants[key] instanceof Object && Object.keys(selectedVariants[key]).includes(variantKey)){
+                    checkNestedVariant(selectedVariants[key], currentParentKey);
+                }
             });
         };
 
@@ -178,7 +180,9 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 return false;
             }
             const selectedVariants = item[mainTitle];
-            checkNestedVariant(selectedVariants);
+            const parentKey = ObjToObserveState?.["parentKey"] || '';
+
+            checkNestedVariant(selectedVariants, parentKey);
         });
 
         // If the variant key does not exist in the selectedVariantsState, return false
@@ -188,7 +192,6 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
         return deepestMatchFound;
     };
-
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);
