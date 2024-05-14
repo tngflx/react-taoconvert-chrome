@@ -33,23 +33,12 @@ const HoverArrow = ({ orderId }) => {
   const clickHandler = () => {
     chrome.tabs.query({ url: 'https://nswex.com/*' }, async function (tabs) {
       const nswexTab = tabs.length > 0 ? tabs[0] : null;
-      const product = await idb.get(orderId);
-
-      function newOrUpdateTab(options, tabId = nswexTab.id) {
-        return chrome.tabs.update(tabId, options).then(() => {
-          const port = chrome.tabs.connect(tabId);
-          port.postMessage({ msg_action: 'nswex_fill_form', ...product });
-        });
-      }
+      const selected_product_infos = await idb.get(orderId);
 
       if (nswexTab) {
-        if (nswexTab?.url == desiredURL) {
-          await newOrUpdateTab({ active: true });
-        } else if (nswexTab?.url != desiredURL) {
-          await newOrUpdateTab({ url: desiredURL, active: true });
-        }
+        chrome.runtime.sendMessage({ msg_action: 'popup:update_nswex_tab', url: desiredURL, selected_product_infos, nswexTab });
       } else {
-        chrome.runtime.sendMessage({ msg_action: 'popup:create_nswex_tab', url: desiredURL, product });
+        chrome.runtime.sendMessage({ msg_action: 'popup:create_nswex_tab', url: desiredURL, selected_product_infos });
       }
     });
   };
