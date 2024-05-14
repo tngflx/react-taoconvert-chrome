@@ -4,6 +4,7 @@ import useStorage from '../../../../shared/hooks/useStorage';
 import dataStore from '../../../../shared/storages/reviewItemSkuBase';
 import { CheckIcon } from '@radix-ui/react-icons';
 import { ObjectMgr } from '../../utils/objectMgr';
+import { useRef } from 'react';
 const objectMgr = new ObjectMgr();
 
 const SelectSkuFirstStep = ({ onSelectSkuText }) => {
@@ -44,6 +45,8 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     const [selectedVariantsState, setSelectedVariantsState] = useState([]);
     const [ObjToObserveState, setObjToObserveState] = useState({});
     const main_selected_prod_key = ObjToObserveState?.["main_product_title"] || '';
+    const clickCount = useRef(0);
+
     /**
      * I want to match when variant only have partial value, e.g. 'Color:Red/' or 'Color:Red/Size:'
      * It means that the current selected variant is truly incomplete yet, and need another pair
@@ -96,11 +99,30 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
                 // Check if the variant key already exists
                 if (existing_variant_objs.hasOwnProperty(variantKey)) {
-                    // Variant key exists, update its price and quantity
-                    const updatedVariantObjs = Object.fromEntries(
-                        Object.entries(existing_variant_objs).filter(([key]) => key === variantKey)
-                    );
-                    existing_product_obj[main_selected_prod_key] = { ...updatedVariantObjs };
+                    setClickCount(prev_click_count => {
+                        const current_click_count = prev_click_count + 1;
+                        if (current_click_count === 1) {
+                            setTimeout(() => {
+                                if (current_click_count === 1) {
+                                    setObjToObserveState(prev_obj_to_observe => {
+                                        return Object.assign({}, prev_obj_to_observe, {
+                                            parentKey: variantKey
+                                        });
+                                    })
+                                }
+                                setClickCount(0);
+                            }, 250);
+                        } else if (current_click_count === 2) {
+                            if (existing_variant_objs.hasOwnProperty(variantKey)) {
+                                const updatedVariantObjs = Object.fromEntries(
+                                    Object.entries(existing_variant_objs).filter(([key]) => key !== variantKey)
+                                );
+                                existing_product_obj[main_selected_prod_key] = { ...updatedVariantObjs };
+                            }
+                            setClickCount(0);
+                        }
+                        return current_click_count;
+                    });
                 } else {
                     // Variant key doesn't exist, add it with price and quantity
                     const deepestObjectWEmpty = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
@@ -159,7 +181,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
     };
 
-   const isVariantValueSelected = (variantKey) => {
+    const isVariantValueSelected = (variantKey) => {
         let deepestMatchFound = false;
 
         const checkNestedVariant = (selectedVariants, currentParentKey) => {
@@ -168,7 +190,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     deepestMatchFound = true;
                     return;
                 }
-                if (key == currentParentKey && selectedVariants[key] instanceof Object && Object.keys(selectedVariants[key]).includes(variantKey)){
+                if (key == currentParentKey && selectedVariants[key] instanceof Object && Object.keys(selectedVariants[key]).includes(variantKey)) {
                     checkNestedVariant(selectedVariants[key], currentParentKey);
                 }
             });
@@ -231,8 +253,8 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     return (
         <>
             <h3 className="mb-4 font-semibold text-gray-900">Choose SKU Texts:</h3>
-            <div className="flex flex-row space-x-4">
-                <ul className="w-56 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <div className="flex flex-row space-x-2">
+                <ul className="w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     {data.remappedSkuBase.map(({ main_product_title }, index) => (
                         <div className="flex items-center ps-3" key={index}>
                             <Checkbox.Root
