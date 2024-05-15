@@ -99,30 +99,27 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
                 // Check if the variant key already exists
                 if (existing_variant_objs.hasOwnProperty(variantKey)) {
-                    setClickCount(prev_click_count => {
-                        const current_click_count = prev_click_count + 1;
-                        if (current_click_count === 1) {
-                            setTimeout(() => {
-                                if (current_click_count === 1) {
-                                    setObjToObserveState(prev_obj_to_observe => {
-                                        return Object.assign({}, prev_obj_to_observe, {
-                                            parentKey: variantKey
-                                        });
-                                    })
-                                }
-                                setClickCount(0);
-                            }, 250);
-                        } else if (current_click_count === 2) {
-                            if (existing_variant_objs.hasOwnProperty(variantKey)) {
-                                const updatedVariantObjs = Object.fromEntries(
-                                    Object.entries(existing_variant_objs).filter(([key]) => key !== variantKey)
-                                );
-                                existing_product_obj[main_selected_prod_key] = { ...updatedVariantObjs };
+                    clickCount.current = clickCount.current + 1;
+                    if (clickCount.current === 1) {
+                        setTimeout(() => {
+                            if (clickCount.current === 1) {
+                                setObjToObserveState(prev_obj_to_observe => {
+                                    return Object.assign({}, prev_obj_to_observe, {
+                                        parentKey: variantKey
+                                    });
+                                })
                             }
-                            setClickCount(0);
+                            clickCount.current = 0;
+                        }, 250);
+                    } else if (clickCount.current === 2) {
+                        if (existing_variant_objs.hasOwnProperty(variantKey)) {
+                            const updatedVariantObjs = Object.fromEntries(
+                                Object.entries(existing_variant_objs).filter(([key]) => key !== variantKey)
+                            );
+                            existing_product_obj[main_selected_prod_key] = { ...updatedVariantObjs };
                         }
-                        return current_click_count;
-                    });
+                        clickCount.current = 0;
+                    }
                 } else {
                     // Variant key doesn't exist, add it with price and quantity
                     const deepestObjectWEmpty = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
@@ -278,7 +275,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     Object.entries(productVariationsData).map(([key, variation], index) => (
                         <ul
                             key={index}
-                            className="w-56 p-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            className="w-full p-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             <li>
                                 <label className="w-full py-3 ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">{key}</label>
                                 {renderCheckboxes(Object.values(variation), key)}
