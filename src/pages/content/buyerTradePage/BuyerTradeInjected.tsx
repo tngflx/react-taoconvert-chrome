@@ -340,13 +340,17 @@ port.onMessage.addListener(async (resp) => {
                     return addressCell ? addressCell.fields.value : acc;
                 }, null);
 
+                const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
                 switch (true) {
                     case (/新西南国际/.test(addressValue)): {
+                        await delay(1000);
                         port.postMessage({ msg_action: 'buyertrade:is_nswex_freight_processed', db_data, first_query } as PostMessageData)
                         first_query = false;
                         break;
                     }
                     case (/穆院鑫玖电创.*ML\d+#\w+/.test(addressValue)): {
+                        await delay(1000);
                         port.postMessage({ msg_action: 'buyertrade:is_mulupost_freight_processed', db_data, first_query } as PostMessageData)
                         first_query = false;
                         break;

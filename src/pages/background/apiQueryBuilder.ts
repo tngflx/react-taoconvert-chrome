@@ -70,24 +70,24 @@ export class queryBuilder extends h5Encryption {
             });
         }
         
-        do {
+        while (retries > 0 && (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0)) {
             try {
                 const cookieStores = await chrome.cookies.getAllCookieStores();
                 const cookiePromises = cookieStores.flatMap(cookieStore => [
                     new Promise(resolve => {
                         chrome.cookies.get({ url: 'https://taobao.com', name: '_m_h5_tk', storeId: cookieStore.id }, cookie => {
-                            if (cookie) resolve(cookie);
+                            resolve(cookie || null);
                         });
                     }),
                     new Promise(resolve => {
                         chrome.cookies.get({ url: 'https://taobao.com', name: '_m_h5_tk_enc', storeId: cookieStore.id }, cookie => {
-                            if (cookie) resolve(cookie);
+                            resolve(cookie || null);
                         });
                     })
                 ]);
                 queryBuilder.h5_tk_token_array = await Promise.all(cookiePromises);
 
-                if (queryBuilder.h5_tk_token_array.length > 0) {
+                if (queryBuilder.h5_tk_token_array?.length > 0) {
                     // Directly set h5Encryption required properties
                     this.setH5EncData();
                 }
@@ -100,7 +100,7 @@ export class queryBuilder extends h5Encryption {
             if (retries > 0 && (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0)) {
                 await refreshWorldPage();
             }
-        } while (retries > 0 && (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0));
+        }
 
         if (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0) {
             throw new Error(`Failed to retrieve cookies after ${maxRetries} attempts.`);

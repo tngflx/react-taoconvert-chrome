@@ -34,10 +34,14 @@ chrome.runtime.onConnect.addListener(function (port) {
             { index: 0, value: product_main_title },
             { index: 2, value: buyertrade_tracking_info.expressId },
             { index: 3, value: bought_quantity },
-            { index: 4, value: String(bought_price / 10) },
+            { index: 4, value: String(bought_price > 100 ? 100 : bought_price / 10) },
           ],
         };
       };
+
+      // Set the currency to CNY
+      const currencySelectElement = document?.getElementById('input-currency') as HTMLSelectElement;
+      currencySelectElement.value = "CNY";
 
       // Query all shipping_product-row divs
       const shippingProductRows = document.querySelectorAll('[id^="shipping_product-row"]');

@@ -80,14 +80,14 @@ export const ImportedProducts = () => {
                                 product_create_date,
                                 buyertrade_tracking_info: { expressId, expressName },
                                 freight_delivery_data: {
-                                    company,
+                                    company = '',
                                     tracking_code,
                                     delivery_status_tracklink,
                                     date_added,
                                     total_weight,
                                     total_price,
                                     delivery_status,
-                                },
+                                } = null,
                             }: ProductData) => (
                                 <li key={product_create_date} className="relative flex justify-between gap-x-4 pt-2 pb-4">
                                     <div className="flex min-w-0 gap-x-4 h-full">

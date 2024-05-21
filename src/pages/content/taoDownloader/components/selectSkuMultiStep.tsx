@@ -88,12 +88,17 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         }
 
         setSelectedVariantsState(prevSelectedVariants => {
-            const existingIndex = prevSelectedVariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
+            // This is deep cloning the array of objects, shallow cloning is this [...prevSelectedVariants]
+            const deep_cloned_prevselectvariants = prevSelectedVariants.map(variant => ({ ...variant }));
+
+            const existingIndex = deep_cloned_prevselectvariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
             const variantKey = current_variant_key ? `${current_variant_key}/${current_variant_val}` : current_variant_val;
 
             if (existingIndex !== -1) {
-                const existing_product_obj = prevSelectedVariants[existingIndex];
+                const existing_product_obj = deep_cloned_prevselectvariants[existingIndex];
                 const existing_variant_objs = existing_product_obj[main_selected_prod_key];
+
+                // Get the last key that is not nested
                 const last_key_not_nested = Object.keys(productVariationsData).pop();
                 const is_existing_have_current_key = Object.keys(existing_variant_objs).find(key => key.includes(current_variant_key));
 
@@ -103,23 +108,30 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     if (clickCount.current === 1) {
                         setTimeout(() => {
                             if (clickCount.current === 1) {
-                                setObjToObserveState(prev_obj_to_observe => {
-                                    return Object.assign({}, prev_obj_to_observe, {
-                                        parentKey: variantKey
-                                    });
-                                })
+                                setObjToObserveState(prev_obj_to_observe => ({
+                                    ...prev_obj_to_observe,
+                                    parentKey: variantKey
+                                }));
                             }
                             clickCount.current = 0;
-                        }, 250);
+                        }, 300);
                     } else if (clickCount.current === 2) {
                         if (existing_variant_objs.hasOwnProperty(variantKey)) {
                             const updatedVariantObjs = Object.fromEntries(
-                                Object.entries(existing_variant_objs).filter(([key]) => key !== variantKey)
+                                Object.entries(existing_variant_objs).filter(([key]) => {
+                                    console.log(key);
+                                    return key !== variantKey
+                                })
                             );
-                            existing_product_obj[main_selected_prod_key] = { ...updatedVariantObjs };
+                            existing_product_obj[main_selected_prod_key] = updatedVariantObjs;
+
+                            // Reset clickCount
+                            clickCount.current = 0;
+
+                            // Return the updated array for the state update
                         }
-                        clickCount.current = 0;
                     }
+                    return deep_cloned_prevselectvariants;
                 } else {
                     // Variant key doesn't exist, add it with price and quantity
                     const deepestObjectWEmpty = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
@@ -136,16 +148,15 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
                     // If the current_variant_key is the last key, add price and quantity
                     if (last_key_not_nested === current_variant_key) {
-                        targetObj[targetKey][variantKey] = { price: '', quantity: '' };
+                        targetObj[targetKey] = { ...targetObj[targetKey], [variantKey]: { price: '', quantity: '' } };
                     } else {
-                        targetObj[targetKey] = {};
+                        targetObj[targetKey] = { ...targetObj[targetKey] };
                     }
 
-                    setObjToObserveState(prev_obj_to_observe => {
-                        return Object.assign({}, prev_obj_to_observe, {
-                            parentKey: targetKey
-                        });
-                    })
+                    setObjToObserveState(prev_obj_to_observe => ({
+                        ...prev_obj_to_observe,
+                        parentKey: targetKey
+                    }));
                 }
 
 
@@ -159,11 +170,10 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 return newSelectedVariants;
             } else {
                 // Product doesn't exist in the state, add it with the variant key and its price and quantity
-                setObjToObserveState(prev_obj_to_observe => {
-                    return Object.assign({}, prev_obj_to_observe, {
-                        parentKey: variantKey
-                    });
-                })
+                setObjToObserveState(prev_obj_to_observe => ({
+                    ...prev_obj_to_observe,
+                    parentKey: variantKey
+                }));
 
                 return [
                     ...prevSelectedVariants,
@@ -251,7 +261,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         <>
             <h3 className="mb-4 font-semibold text-gray-900">Choose SKU Texts:</h3>
             <div className="flex flex-row space-x-2">
-                <ul className="w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                <ul className="w-fit text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     {data.remappedSkuBase.map(({ main_product_title }, index) => (
                         <div className="flex items-center ps-3" key={index}>
                             <Checkbox.Root
@@ -275,7 +285,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     Object.entries(productVariationsData).map(([key, variation], index) => (
                         <ul
                             key={index}
-                            className="w-full p-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            className="w-2/5 p-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             <li>
                                 <label className="w-full py-3 ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">{key}</label>
                                 {renderCheckboxes(Object.values(variation), key)}
