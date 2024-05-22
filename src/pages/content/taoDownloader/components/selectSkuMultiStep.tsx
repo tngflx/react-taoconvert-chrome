@@ -43,9 +43,9 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     }, [data.remappedSkuBase]);
 
     const [selectedVariantsState, setSelectedVariantsState] = useState([]);
-    const [KeyToInsertState, setKeyToInsertState] = useState({});
-    const main_selected_prod_key = KeyToInsertState?.["main_product_title"] || '';
-    const target_key_to_insert = KeyToInsertState?.["parentKey"] || '';
+    const [keyToObserveState, setKeyToObserveState] = useState({});
+    const main_selected_prod_key = keyToObserveState?.["main_product_title"] || '';
+    const target_key_to_observe = keyToObserveState?.["parentKey"] || '';
     const clickCount = useRef(0);
 
     /**
@@ -70,20 +70,20 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         variant: { current_variant_val = undefined, current_variant_key = undefined } = {},
     }) => {
         if (!current_variant_val && main_product_title) {
-            setKeyToInsertState(prev_obj_to_observe => {
-                let newObjToObserve = { ...prev_obj_to_observe };
+            setKeyToObserveState(prev_obj_to_observe => {
+                let new_key_to_observe = { ...prev_obj_to_observe };
 
-                if (newObjToObserve?.["main_product_title"] === main_product_title) {
-                    newObjToObserve["main_product_title"] = {};
+                if (new_key_to_observe?.["main_product_title"] === main_product_title) {
+                    new_key_to_observe["main_product_title"] = {};
                     setSelectedVariantsState(prevSelectedVariants => {
                         return prevSelectedVariants.filter(item => Object.keys(item)[0] !== main_product_title);
                     });
                 } else {
-                    newObjToObserve = {
+                    new_key_to_observe = {
                         main_product_title,
                     };
                 }
-                return newObjToObserve;
+                return new_key_to_observe;
             });
             return;
         }
@@ -104,12 +104,12 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 const is_existing_same_current_vkey = Object.keys(existing_variant_objs).find(key => key.includes(current_variant_key));
 
                 // Check if the variant key already exists
-                if (existing_variant_objs.hasOwnProperty(current_combined_vkey)) {
+                if (existing_variant_objs.hasOwnProperty(current_combined_vkey) || existing_variant_objs[target_key_to_observe]?.hasOwnProperty(current_combined_vkey)) {
                     clickCount.current = clickCount.current + 1;
                     if (clickCount.current === 1) {
                         setTimeout(() => {
                             if (clickCount.current === 1) {
-                                setKeyToInsertState(prev_obj_to_observe => ({
+                                setKeyToObserveState(prev_obj_to_observe => ({
                                     ...prev_obj_to_observe,
                                     parentKey: current_combined_vkey
                                 }));
@@ -119,7 +119,6 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     } else if (clickCount.current === 2) {
                         const updatedVariantObjs = Object.fromEntries(
                             Object.entries(existing_variant_objs).filter(([key]) => {
-                                console.log(key);
                                 return key !== current_combined_vkey
                             })
                         );
@@ -128,7 +127,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         // Reset clickCount
                         clickCount.current = 0;
 
-                        setKeyToInsertState((prev_obj_to_observe: { parentKey?: string }) => {
+                        setKeyToObserveState((prev_obj_to_observe: { parentKey?: string }) => {
                             const updatedState = { ...prev_obj_to_observe };
                             const parentKey = Object.keys(updatedVariantObjs).pop();
 
@@ -164,7 +163,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         targetObj[targetKey] = { ...targetObj[targetKey] };
                     }
 
-                    setKeyToInsertState(prev_obj_to_observe => ({
+                    setKeyToObserveState(prev_obj_to_observe => ({
                         ...prev_obj_to_observe,
                         parentKey: targetKey
                     }));
@@ -181,7 +180,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 return newSelectedVariants;
             } else {
                 // Product doesn't exist in the state, add it with the variant key and its price and quantity
-                setKeyToInsertState(prev_obj_to_observe => ({
+                setKeyToObserveState(prev_obj_to_observe => ({
                     ...prev_obj_to_observe,
                     parentKey: current_combined_vkey
                 }));
@@ -220,7 +219,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 return false;
             }
             const selectedVariants = item[mainTitle];
-            const parentKey = KeyToInsertState?.["parentKey"] || '';
+            const parentKey = keyToObserveState?.["parentKey"] || '';
 
             checkNestedVariant(selectedVariants, parentKey);
         });
@@ -235,7 +234,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);
-        console.log('objToObserve', KeyToInsertState);
+        console.log('objToObserve', keyToObserveState);
         // onSelectSkuText(selectedVariants);
     };
 
@@ -277,7 +276,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         <div className="flex items-center ps-3" key={index}>
                             <Checkbox.Root
                                 className="w-4 h-4 text-blue-400 bg-green-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                                checked={KeyToInsertState?.["main_product_title"] === main_product_title}
+                                checked={keyToObserveState?.["main_product_title"] === main_product_title}
                                 onCheckedChange={() => handleCheckboxChange({ main_product_title, variant: undefined })}
                                 id={`checkbox_${main_product_title}_${index}`}>
                                 <Checkbox.Indicator className="text-green">
@@ -292,7 +291,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         </div>
                     ))}
                 </ul>
-                {KeyToInsertState?.["main_product_title"] == main_selected_prod_key &&
+                {keyToObserveState?.["main_product_title"] == main_selected_prod_key &&
                     Object.entries(productVariationsData).map(([key, variation], index) => (
                         <ul
                             key={index}
