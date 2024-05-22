@@ -43,8 +43,9 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     }, [data.remappedSkuBase]);
 
     const [selectedVariantsState, setSelectedVariantsState] = useState([]);
-    const [ObjToObserveState, setObjToObserveState] = useState({});
-    const main_selected_prod_key = ObjToObserveState?.["main_product_title"] || '';
+    const [KeyToInsertState, setKeyToInsertState] = useState({});
+    const main_selected_prod_key = KeyToInsertState?.["main_product_title"] || '';
+    const target_key_to_insert = KeyToInsertState?.["parentKey"] || '';
     const clickCount = useRef(0);
 
     /**
@@ -69,7 +70,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         variant: { current_variant_val = undefined, current_variant_key = undefined } = {},
     }) => {
         if (!current_variant_val && main_product_title) {
-            setObjToObserveState(prev_obj_to_observe => {
+            setKeyToInsertState(prev_obj_to_observe => {
                 let newObjToObserve = { ...prev_obj_to_observe };
 
                 if (newObjToObserve?.["main_product_title"] === main_product_title) {
@@ -91,69 +92,79 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             // This is deep cloning the array of objects, shallow cloning is this [...prevSelectedVariants]
             const deep_cloned_prevselectvariants = prevSelectedVariants.map(variant => ({ ...variant }));
 
-            const existingIndex = deep_cloned_prevselectvariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
-            const variantKey = current_variant_key ? `${current_variant_key}/${current_variant_val}` : current_variant_val;
+            const existing_variant_index = deep_cloned_prevselectvariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
+            const current_combined_vkey = current_variant_key ? `${current_variant_key}/${current_variant_val}` : current_variant_val;
 
-            if (existingIndex !== -1) {
-                const existing_product_obj = deep_cloned_prevselectvariants[existingIndex];
+            if (existing_variant_index !== -1) {
+                const existing_product_obj = deep_cloned_prevselectvariants[existing_variant_index];
                 const existing_variant_objs = existing_product_obj[main_selected_prod_key];
 
                 // Get the last key that is not nested
-                const last_key_not_nested = Object.keys(productVariationsData).pop();
-                const is_existing_have_current_key = Object.keys(existing_variant_objs).find(key => key.includes(current_variant_key));
+                const last_key_prodvdata_notnested = Object.keys(productVariationsData).pop();
+                const is_existing_same_current_vkey = Object.keys(existing_variant_objs).find(key => key.includes(current_variant_key));
 
                 // Check if the variant key already exists
-                if (existing_variant_objs.hasOwnProperty(variantKey)) {
+                if (existing_variant_objs.hasOwnProperty(current_combined_vkey)) {
                     clickCount.current = clickCount.current + 1;
                     if (clickCount.current === 1) {
                         setTimeout(() => {
                             if (clickCount.current === 1) {
-                                setObjToObserveState(prev_obj_to_observe => ({
+                                setKeyToInsertState(prev_obj_to_observe => ({
                                     ...prev_obj_to_observe,
-                                    parentKey: variantKey
+                                    parentKey: current_combined_vkey
                                 }));
                             }
                             clickCount.current = 0;
                         }, 300);
                     } else if (clickCount.current === 2) {
-                        if (existing_variant_objs.hasOwnProperty(variantKey)) {
-                            const updatedVariantObjs = Object.fromEntries(
-                                Object.entries(existing_variant_objs).filter(([key]) => {
-                                    console.log(key);
-                                    return key !== variantKey
-                                })
-                            );
-                            existing_product_obj[main_selected_prod_key] = updatedVariantObjs;
+                        const updatedVariantObjs = Object.fromEntries(
+                            Object.entries(existing_variant_objs).filter(([key]) => {
+                                console.log(key);
+                                return key !== current_combined_vkey
+                            })
+                        );
+                        existing_product_obj[main_selected_prod_key] = updatedVariantObjs;
 
-                            // Reset clickCount
-                            clickCount.current = 0;
+                        // Reset clickCount
+                        clickCount.current = 0;
 
-                            // Return the updated array for the state update
-                        }
+                        setKeyToInsertState((prev_obj_to_observe: { parentKey?: string }) => {
+                            const updatedState = { ...prev_obj_to_observe };
+                            const parentKey = Object.keys(updatedVariantObjs).pop();
+
+                            if (parentKey) {
+                                updatedState.parentKey = parentKey;
+                            } else {
+                                delete updatedState.parentKey;
+                            }
+
+                            return updatedState;
+                        });
+                        // Return the updated array for the state update
                     }
                     return deep_cloned_prevselectvariants;
                 } else {
                     // Variant key doesn't exist, add it with price and quantity
                     const deepestObjectWEmpty = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
                     let targetObj = deepestObjectWEmpty || existing_variant_objs;
-                    let targetKey = variantKey;
+                    let targetKey = current_combined_vkey;
 
                     // Traverse to the deepest empty object
                     if (deepestObjectWEmpty) {
                         const keys = Object.keys(deepestObjectWEmpty);
-                        targetKey = keys.length > 0 ? keys[keys.length - 1] : variantKey;
-                    } else if (!deepestObjectWEmpty && !is_existing_have_current_key) {
-                        targetKey = Object.keys(existing_variant_objs).pop();
+                        targetKey = keys.length > 0 ? keys[keys.length - 1] : current_combined_vkey;
+                    } else if (!deepestObjectWEmpty && !is_existing_same_current_vkey) {
+                        targetKey = Object.keys(existing_variant_objs).pop() || current_combined_vkey;
                     }
 
                     // If the current_variant_key is the last key, add price and quantity
-                    if (last_key_not_nested === current_variant_key) {
-                        targetObj[targetKey] = { ...targetObj[targetKey], [variantKey]: { price: '', quantity: '' } };
+                    if (last_key_prodvdata_notnested === current_variant_key) {
+                        targetObj[targetKey] = { ...targetObj[targetKey], [current_combined_vkey]: { price: '', quantity: '' } };
                     } else {
                         targetObj[targetKey] = { ...targetObj[targetKey] };
                     }
 
-                    setObjToObserveState(prev_obj_to_observe => ({
+                    setKeyToInsertState(prev_obj_to_observe => ({
                         ...prev_obj_to_observe,
                         parentKey: targetKey
                     }));
@@ -165,21 +176,21 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 };
 
                 const newSelectedVariants = [...prevSelectedVariants];
-                newSelectedVariants[existingIndex] = newProduct;
+                newSelectedVariants[existing_variant_index] = newProduct;
 
                 return newSelectedVariants;
             } else {
                 // Product doesn't exist in the state, add it with the variant key and its price and quantity
-                setObjToObserveState(prev_obj_to_observe => ({
+                setKeyToInsertState(prev_obj_to_observe => ({
                     ...prev_obj_to_observe,
-                    parentKey: variantKey
+                    parentKey: current_combined_vkey
                 }));
 
                 return [
                     ...prevSelectedVariants,
                     {
                         [main_selected_prod_key]: {
-                            [variantKey]: {}
+                            [current_combined_vkey]: {}
                         }
                     }
                 ];
@@ -209,7 +220,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 return false;
             }
             const selectedVariants = item[mainTitle];
-            const parentKey = ObjToObserveState?.["parentKey"] || '';
+            const parentKey = KeyToInsertState?.["parentKey"] || '';
 
             checkNestedVariant(selectedVariants, parentKey);
         });
@@ -224,7 +235,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);
-        console.log('objToObserve', ObjToObserveState);
+        console.log('objToObserve', KeyToInsertState);
         // onSelectSkuText(selectedVariants);
     };
 
@@ -266,7 +277,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         <div className="flex items-center ps-3" key={index}>
                             <Checkbox.Root
                                 className="w-4 h-4 text-blue-400 bg-green-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                                checked={ObjToObserveState?.["main_product_title"] === main_product_title}
+                                checked={KeyToInsertState?.["main_product_title"] === main_product_title}
                                 onCheckedChange={() => handleCheckboxChange({ main_product_title, variant: undefined })}
                                 id={`checkbox_${main_product_title}_${index}`}>
                                 <Checkbox.Indicator className="text-green">
@@ -281,7 +292,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         </div>
                     ))}
                 </ul>
-                {ObjToObserveState?.["main_product_title"] == main_selected_prod_key &&
+                {KeyToInsertState?.["main_product_title"] == main_selected_prod_key &&
                     Object.entries(productVariationsData).map(([key, variation], index) => (
                         <ul
                             key={index}
