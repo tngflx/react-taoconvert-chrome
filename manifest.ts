@@ -9,8 +9,9 @@ const manifest: chrome.runtime.ManifestV3 = {
     version: packageJson.version,
     description: packageJson.description,
     permissions: [
-        'storage', 'sidePanel', "cookies", "background", "webRequest",
-        "unlimitedStorage", "tabs", "debugger", "webNavigation"
+        'storage', 'sidePanel', "cookies", "webRequest",
+        "unlimitedStorage", "tabs", "debugger", "scripting",
+        "webNavigation", "background"
     ],
     host_permissions: ["*://*/*"],
     background: {
@@ -29,6 +30,10 @@ const manifest: chrome.runtime.ManifestV3 = {
         {
             matches: ["https://buyertrade.taobao.com/*"],
             js: ['src/pages/buyerTrade/index.js']
+        },
+        {
+            matches: ["https://world.taobao.com/*"],
+            js: ['src/pages/taoWorld/index.js']
         },
         {
             matches: ["https://s.taobao.com/*", "https://item.taobao.com/*", "https://world.taobao.com/*", "https://*.tmall.com/*"],

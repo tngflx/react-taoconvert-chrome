@@ -1,3 +1,4 @@
+import { rejects } from "assert";
 import { h5Encryption } from "../../shared/h5api.taobao/sign"
 interface fetchOptions {
     headers: { "accept-language": string; "sec-fetch-dest": string; "sec-fetch-mode": string; "sec-fetch-site": string; "sec-gpc": string; Cookie: any; "Content-Type": string; }; referrerPolicy: string; method: string; mode: string
@@ -43,25 +44,23 @@ export class queryBuilder extends h5Encryption {
     }
 
     async initH5EncDataWithRetries() {
-        if (queryBuilder.h5_tk_token_array && queryBuilder.h5_tk_token_array.length > 0) {
-
-            this.setH5EncData();
-            return;
-        }
-        const maxRetries = 3;
-        let retries = maxRetries;
 
         //Hacky way to refetch m_h5_tk token by refreshing world.taobao.com
-        const refreshWorldPage = (): Promise<void> => {
+        const refreshTaobaoWorldPage = (retries): Promise<void> => {
             return new Promise((resolve) => {
                 console.log('Opening temporary tab for refresh...');
                 chrome.tabs.create({ url: 'https://world.taobao.com' }, (newTab) => {
                     chrome.webNavigation.onCompleted.addListener(function onCompletedListener(details) {
                         if (details.tabId === newTab.id) {
                             chrome.webNavigation.onCompleted.removeListener(onCompletedListener);
-                            chrome.tabs.remove(newTab.id, () => {
-                                console.log('Temporary tab closed.');
-                                resolve();
+
+                            chrome.runtime.sendMessage({ msg_action: 'taoworld_login_form' }, (response) => {
+                                setTimeout(() => {
+                                    chrome.tabs.remove(newTab.id, () => {
+                                        console.log('Temporary tab closed.');
+                                        resolve();
+                                    });
+                                }, 3000);
                             });
                         }
                     });
@@ -69,42 +68,69 @@ export class queryBuilder extends h5Encryption {
 
             });
         }
-        
-        while (retries > 0 && (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0)) {
+
+        if (queryBuilder.h5_tk_token_array && queryBuilder.h5_tk_token_array.length > 0) {
+
+            this.setH5EncData();
+            return;
+        }
+        const maxRetries = 3;
+        let retries = maxRetries;
+        do {
             try {
                 const cookieStores = await chrome.cookies.getAllCookieStores();
-                const cookiePromises = cookieStores.flatMap(cookieStore => [
-                    new Promise(resolve => {
-                        chrome.cookies.get({ url: 'https://taobao.com', name: '_m_h5_tk', storeId: cookieStore.id }, cookie => {
-                            resolve(cookie || null);
-                        });
-                    }),
-                    new Promise(resolve => {
-                        chrome.cookies.get({ url: 'https://taobao.com', name: '_m_h5_tk_enc', storeId: cookieStore.id }, cookie => {
-                            resolve(cookie || null);
-                        });
-                    })
-                ]);
+                const cookieNames = ['_m_h5_tk', '_m_h5_tk_enc'];
+
+                const cookiePromises = cookieStores.flatMap(cookieStore =>
+                    cookieNames.map(cookieName =>
+                        new Promise((resolve, reject) => {
+                            chrome.cookies.get({ url: 'https://taobao.com', name: cookieName, storeId: cookieStore.id }, async cookie => {
+                                if (cookie)
+                                    resolve(cookie)
+                                else {
+                                    reject('Cookie not found')
+                                }
+                            });
+                        })
+                    )
+                );
+
                 queryBuilder.h5_tk_token_array = await Promise.all(cookiePromises);
 
-                if (queryBuilder.h5_tk_token_array?.length > 0) {
+                if (queryBuilder.h5_tk_token_array.some(cookie => cookie === null)) {
+                    await new Promise((resolve, reject) => {
+                        chrome.cookies.getAll({ url: 'https://taobao.com' }, function (cookies) {
+                            cookies.forEach(cookie => {
+                                chrome.cookies.remove({ url: "http" + (cookie.secure ? "s" : "") + "://" + cookie.domain + cookie.path, name: cookie.name }, details => {
+                                    console.log('Cookie removed:', details);
+                                    resolve(details)
+                                });
+                            });
+                        });
+                    });
+                    queryBuilder.h5_tk_token_array = null;
+                }
+
+                if (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0) {
+                    await refreshTaobaoWorldPage(retries);
+
+                } else if (queryBuilder.h5_tk_token_array && queryBuilder.h5_tk_token_array.length > 0) {
                     // Directly set h5Encryption required properties
                     this.setH5EncData();
                 }
+
             } catch (error) {
                 console.error("Error retrieving cookies:", error);
             }
 
             retries--;
+        } while (retries > 0 && (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0))
 
-            if (retries > 0 && (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0)) {
-                await refreshWorldPage();
-            }
-        }
 
-        if (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0) {
+        if (queryBuilder.h5_tk_token_array === null || queryBuilder.h5_tk_token_array.length === 0) {
             throw new Error(`Failed to retrieve cookies after ${maxRetries} attempts.`);
         }
+
     }
 
     createFetch() {
