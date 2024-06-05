@@ -79,7 +79,9 @@ export const ImportedProducts = () => {
                                 product_image_url,
                                 product_create_date,
                                 buyertrade_tracking_info: { expressId, expressName },
-                                freight_delivery_data: {
+                                freight_delivery_data
+                            }: ProductData) => {
+                                const {
                                     company = '',
                                     tracking_code,
                                     delivery_status_tracklink,
@@ -87,36 +89,38 @@ export const ImportedProducts = () => {
                                     total_weight,
                                     total_price,
                                     delivery_status,
-                                } = null,
-                            }: ProductData) => (
-                                <li key={product_create_date} className="relative flex justify-between gap-x-4 pt-2 pb-4">
-                                    <div className="flex min-w-0 gap-x-4 h-full">
-                                        <div className="image_and_status flex w-20 flex-col items-center">
-                                            <img className="h-12 w-12 bg-gray-500 mb-2" src={product_image_url} alt="" />
-                                            <StatusIndicators deliveryStatus={delivery_status} />
-                                        </div>
-                                        <div className="description min-w-0 flex-row overflow-visible group relative" onMouseOver={() => setSuccessEntry(null)}>
-                                            <p className="text-sm font-semibold leading-6 text-white-900 z-10 relative">
-                                                {product_main_title}
-                                            </p>
-                                            <p className="mb-2 text-xs leading-5 text-white-900 z-10 relative">{selected_product_variant}</p>
-                                            <StatusIndicators company={company} />
-                                            {expressId && (
-                                                <span className="bg-blue-400 text-white p-1.5 rounded-full text-center z-2 relative">{`${expressName}: ${expressId}`}</span>
-                                            )}
-                                            <HoverArrow orderId={orderId} />
-                                        </div>
-                                    </div>
+                                } = freight_delivery_data || {};
 
-                                    <div className="shrink-0 sm:flex sm:flex-col sm:items-end">
-                                        <p className="text-sm leading-6 text-gray-900">Buttons</p>
-                                        <div className="mt-1 flex items-center gap-x-1.5">
-                                            <CircularButton icon="-" bgColor="blue" orderId={orderId} isMinus />
-                                            <CircularButton icon="+" bgColor="blue" orderId={orderId} />
+                                return (
+                                    <li key={product_create_date} className="relative flex justify-between gap-x-4 pt-2 pb-4">
+                                        <div className="flex min-w-0 gap-x-4 h-full">
+                                            <div className="image_and_status flex w-20 flex-col items-center">
+                                                <img className="h-12 w-12 bg-gray-500 mb-2" src={product_image_url} alt="" />
+                                                <StatusIndicators deliveryStatus={delivery_status} />
+                                            </div>
+                                            <div className="description min-w-0 flex-row overflow-visible group relative" onMouseOver={() => setSuccessEntry(null)}>
+                                                <p className="text-sm font-semibold leading-6 text-white-900 z-10 relative">
+                                                    {product_main_title}
+                                                </p>
+                                                <p className="mb-2 text-xs leading-5 text-white-900 z-10 relative">{selected_product_variant}</p>
+                                                <StatusIndicators company={company} />
+                                                {expressId && (
+                                                    <span className="bg-blue-400 text-white p-1.5 rounded-full text-center z-2 relative">{`${expressName}: ${expressId}`}</span>
+                                                )}
+                                                <HoverArrow orderId={orderId} />
+                                            </div>
                                         </div>
-                                    </div>
-                                </li>
-                            ),
+
+                                        <div className="shrink-0 sm:flex sm:flex-col sm:items-end">
+                                            <p className="text-sm leading-6 text-gray-900">Buttons</p>
+                                            <div className="mt-1 flex items-center gap-x-1.5">
+                                                <CircularButton icon="-" bgColor="blue" orderId={orderId} isMinus />
+                                                <CircularButton icon="+" bgColor="blue" orderId={orderId} />
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            }
                         )}
                     </ul>
                 </div>
