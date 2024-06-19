@@ -231,7 +231,17 @@ if (location.href.includes('https://s.taobao.com/')) {
 /////////////////////////////////////[https://item.taobao.com/]/////////////////////////////////////
 //Affected only in taobao item page
 if (location.href.includes('https://item.taobao.com/')) {
-  let itemPageDivToObserve = 'div[class^="Item--content"] [class^="BasicContent--itemInfo"]';
+  let regex = /^item(.*)?(--|-)content/gi;
+  let result = Array.from(document.querySelectorAll('div')).reduce((acc, el) => {
+    if (acc.parent === null && regex.test(el.className)) {
+      acc.parent = el.className;
+      acc.child = Array.from(el.children).find(childEl => /BasicContent--/.test(childEl.className))?.className;
+    }
+    return acc;
+  }, { parent: null, child: null });
+
+  let itemPageDivToObserve = result.parent && result.child ? `div[class="${result.parent}"] [class="${result.child}"]` : `div[class="${result.parent}"]`;
+
   mutObserverManager.config = {
     mode: 'addedText',
     mutTargetChildName: 'Price--priceText',

@@ -140,7 +140,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                             chrome.tabs.onUpdated.removeListener(listener);
                             console.error(chrome.runtime.lastError);
                         }
-                        if(nswexTab.url == url) {
+                        if (nswexTab.url == url) {
                             listener(updatedTab.id, { status: 'complete' })
                         }
                     });
@@ -191,7 +191,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
                             delete resp.msg_action;
 
-                            port.postMessage({ msg_action: "process_mulupost_freight_html", ...resp })
+                            port.postMessage({ msg_action: "background:process_mulupost_freight_html", ...resp })
                             break;
                         }
 
@@ -208,6 +208,7 @@ chrome.runtime.onConnect.addListener((port) => {
                                     ontheway_html,
                                     arrived_html
                                 };
+                                port.postMessage({ done_process_entry: true });
                             } else {
                                 resp.freight_html = {
                                     delivery_html: {
@@ -215,11 +216,13 @@ chrome.runtime.onConnect.addListener((port) => {
                                         delivery_html_tcode: buyertrade_tracking_info?.expressId
                                     }
                                 };
+
+                                port.postMessage({ done_process_entry: true });
+
                             }
 
                             delete resp.msg_action; //Bug in chrome where msg_action will stuck on previous call
-
-                            port.postMessage({ msg_action: "process_nswex_freight_html", ...resp })
+                            port.postMessage({ msg_action: "background:process_nswex_freight_html", ...resp })
                             break;
                         }
                         case 'save_db': {

@@ -4,37 +4,39 @@ import useStorage from '../../../../shared/hooks/useStorage';
 import dataStore from '../../../../shared/storages/reviewItemSkuBase';
 import { CheckIcon } from '@radix-ui/react-icons';
 import { ObjectMgr } from '../../utils/objectMgr';
-
 const objectMgr = new ObjectMgr();
 
 const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     const data = useStorage(dataStore);
 
     const productVariationsData = useMemo(() => {
-        return data.remappedSkuBase.reduce((acc, { values, variation_names }) => {
-            if (!variation_names) {
-                return acc;
-            }
+        return data.remappedSkuBase
+            .reduce((acc, { values, variation_names }) => {
+                if (!variation_names) {
+                    return acc;
+                }
 
-            Object.keys(values).forEach(key => {
-                const components = key.split('/');
+                Object.keys(values).forEach(key => {
+                    const components = key.split('/');
 
-                components.forEach((component, index) => {
-                    acc[index] = acc[index] || [];
-                    if (!acc[index].includes(component)) {
-                        acc[index].push(component);
-                        acc[index]['variation_names'] = variation_names;
-                    }
+                    components.forEach((component, index) => {
+                        acc[index] = acc[index] || [];
+
+                        if (!acc[index].includes(component)) {
+                            acc[index].push(component);
+                            acc[index]['variation_names'] = variation_names;
+                        }
+                    });
                 });
-            });
 
-            return acc;
-        }, []).reduce((acc, { variation_names, ...categories }, index) => {
-            const variation_name = variation_names.split('/');
-            acc[variation_name[index]] = categories;
+                return acc;
+            }, [])
+            .reduce((acc, { variation_names, ...categories }, index) => {
+                const variation_name = variation_names.split('/');
+                acc[variation_name[index]] = categories;
 
-            return acc;
-        }, {});
+                return acc;
+            }, {});
     }, [data.remappedSkuBase]);
 
     const [selectedVariantsState, setSelectedVariantsState] = useState([]);
@@ -43,29 +45,14 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     const target_key_to_observe = keyToObserveState?.["parentKey"] || '';
     const clickCount = useRef(0);
 
-    const updateNestedState = (state, keys, value) => {
-        const [firstKey, ...remainingKeys] = keys;
-        if (!firstKey) return value;
+    const updateNestedVariants = (variants, keys, value) => {
+        const lastKey = keys.join('/');
+        const parentKeys = keys.slice(0, -1).join('/');
 
-        return {
-            ...state,
-            [firstKey]: updateNestedState(state[firstKey] || {}, remainingKeys, value),
-        };
-    };
-
-    const deleteNestedState = (state, keys) => {
-        const [firstKey, ...remainingKeys] = keys;
-        if (!firstKey) return state;
-
-        if (remainingKeys.length === 0) {
-            const { [firstKey]: _, ...rest } = state;
-            return rest;
+        if (!variants[parentKeys]) {
+            variants[parentKeys] = {};
         }
-
-        return {
-            ...state,
-            [firstKey]: deleteNestedState(state[firstKey], remainingKeys),
-        };
+        variants[parentKeys][lastKey] = value;
     };
 
     const handleCheckboxChange = ({
@@ -92,19 +79,16 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         }
 
         setSelectedVariantsState(prevSelectedVariants => {
-            const deep_cloned_prevselectvariants = JSON.parse(JSON.stringify(prevSelectedVariants));
+            const deep_cloned_prevselectvariants = prevSelectedVariants.map(variant => ({ ...variant }));
 
             const existing_variant_index = deep_cloned_prevselectvariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
-            const current_combined_vkey = current_variant_key ? `${current_variant_key}/${current_variant_val}` : current_variant_val;
-            const keys = current_combined_vkey.split('/');
+            const current_combined_vkey = `${current_variant_key}/${current_variant_val}`;
 
             if (existing_variant_index !== -1) {
                 const existing_product_obj = deep_cloned_prevselectvariants[existing_variant_index];
                 const existing_variant_objs = existing_product_obj[main_selected_prod_key];
 
-                const targetVariantObj = keys.reduce((obj, key) => obj && obj[key], existing_variant_objs);
-
-                if (targetVariantObj) {
+                if (existing_variant_objs[target_key_to_observe]?.hasOwnProperty(current_combined_vkey)) {
                     clickCount.current = clickCount.current + 1;
                     if (clickCount.current === 1) {
                         setTimeout(() => {
@@ -117,7 +101,9 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                             clickCount.current = 0;
                         }, 300);
                     } else if (clickCount.current === 2) {
-                        const updatedVariantObjs = deleteNestedState(existing_variant_objs, current_combined_vkey);
+                        const updatedVariantObjs = Object.fromEntries(
+                            Object.entries(existing_variant_objs).filter(([key]) => key !== current_combined_vkey)
+                        );
                         existing_product_obj[main_selected_prod_key] = updatedVariantObjs;
 
                         clickCount.current = 0;
@@ -134,12 +120,10 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
                             return updatedState;
                         });
-
-                        return deep_cloned_prevselectvariants;
                     }
+                    return deep_cloned_prevselectvariants;
                 } else {
-                    const updatedVariants = updateNestedState(existing_variant_objs, current_combined_vkey, {});
-                    existing_product_obj[main_selected_prod_key] = updatedVariants;
+                    updateNestedVariants(existing_variant_objs, [target_key_to_observe, current_combined_vkey], { price: '', quantity: '' });
 
                     setKeyToObserveState(prev_obj_to_observe => ({
                         ...prev_obj_to_observe,
@@ -164,12 +148,13 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 return [
                     ...prevSelectedVariants,
                     {
-                        [main_selected_prod_key]: updateNestedState({}, current_combined_vkey, {})
+                        [main_selected_prod_key]: {
+                            [current_combined_vkey]: { price: '', quantity: '' }
+                        }
                     }
                 ];
             }
         });
-
     };
 
     const isVariantValueSelected = (variantKey) => {
@@ -181,7 +166,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     deepestMatchFound = true;
                     return;
                 }
-                if (key === currentParentKey && selectedVariants[key] instanceof Object && Object.keys(selectedVariants[key]).includes(variantKey)) {
+                if (key === currentParentKey && selectedVariants[key] instanceof Object) {
                     checkNestedVariant(selectedVariants[key], currentParentKey);
                 }
             });
@@ -198,16 +183,13 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             checkNestedVariant(selectedVariants, parentKey);
         });
 
-        if (!deepestMatchFound) {
-            return false;
-        }
-
         return deepestMatchFound;
     };
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);
         console.log('objToObserve', keyToObserveState);
+        // onSelectSkuText(selectedVariants);
     };
 
     const renderCheckboxes = (variant_values, current_variant_key) =>

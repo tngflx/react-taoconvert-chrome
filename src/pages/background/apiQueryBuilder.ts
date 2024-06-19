@@ -88,7 +88,7 @@ export class queryBuilder extends h5Encryption {
                                 if (cookie)
                                     resolve(cookie)
                                 else {
-                                    reject('Cookie not found')
+                                    reject('Cookie not found from taobao.com')
                                 }
                             });
                         })
@@ -97,23 +97,8 @@ export class queryBuilder extends h5Encryption {
 
                 queryBuilder.h5_tk_token_array = await Promise.all(cookiePromises);
 
-                if (queryBuilder.h5_tk_token_array.some(cookie => cookie === null)) {
-                    await new Promise((resolve, reject) => {
-                        chrome.cookies.getAll({ url: 'https://taobao.com' }, function (cookies) {
-                            cookies.forEach(cookie => {
-                                chrome.cookies.remove({ url: "http" + (cookie.secure ? "s" : "") + "://" + cookie.domain + cookie.path, name: cookie.name }, details => {
-                                    console.log('Cookie removed:', details);
-                                    resolve(details)
-                                });
-                            });
-                        });
-                    });
-                    queryBuilder.h5_tk_token_array = null;
-                }
-
                 if (!queryBuilder.h5_tk_token_array || queryBuilder.h5_tk_token_array.length === 0) {
                     await refreshTaobaoWorldPage(retries);
-
                 } else if (queryBuilder.h5_tk_token_array && queryBuilder.h5_tk_token_array.length > 0) {
                     // Directly set h5Encryption required properties
                     this.setH5EncData();
@@ -121,6 +106,23 @@ export class queryBuilder extends h5Encryption {
 
             } catch (error) {
                 console.error("Error retrieving cookies:", error);
+
+                // Remove cookies
+                await new Promise((resolve, reject) => {
+                    chrome.cookies.getAll({ url: 'https://taobao.com' }, function (cookies) {
+                        cookies.forEach(cookie => {
+                            chrome.cookies.remove({ url: "http" + (cookie.secure ? "s" : "") + "://" + cookie.domain + cookie.path, name: cookie.name }, details => {
+                                console.log('Cookie removed:', details);
+                                resolve(details)
+                            });
+                        });
+                    });
+                });
+
+                // Refresh page
+                await refreshTaobaoWorldPage(retries);
+
+                queryBuilder.h5_tk_token_array = null;
             }
 
             retries--;

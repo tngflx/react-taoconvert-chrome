@@ -2,9 +2,11 @@
 import { render } from 'react-dom';
 import { DOMTools } from '../utils/misc';
 import ButtonRenderer from '../sharedComponents/renderer/taoButtonRenderer';
+import { portMessageQueue } from '../utils/portMessageHandler';
 const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
 
 const port = chrome.runtime.connect({ name: 'content-script' });
+const chrome_port = new portMessageQueue(port);
 
 const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
     const button_container = document.createElement('div');
@@ -44,12 +46,11 @@ const freight_props_savelater_data = [];
 
 port.onMessage.addListener(async (resp) => {
     const { msg_action, db_data, freight_html } = resp;
-    const { buyertrade_tracking_info } = db_data
+    const { buyertrade_tracking_info } = db_data || {};
     const parser = new DOMParser();
 
     switch (msg_action) {
-
-        case 'process_mulupost_freight_html': {
+        case 'background:process_mulupost_freight_html': {
             const mulu_doc = parser.parseFromString(freight_html.mulu_html as string, 'text/html')
             const panel_bd_arr = Array.from(mulu_doc.querySelectorAll('.panel-bd .m-desc-item'))
             const freight_infos = panel_bd_arr.reduce((acc, item) => {
@@ -90,7 +91,7 @@ port.onMessage.addListener(async (resp) => {
             console.log({ ...db_data }, 'mulupost')
             break;
         }
-        case 'process_nswex_freight_html': {
+        case 'background:process_nswex_freight_html': {
             type DeliveryHtmlProps<T> = {
                 delivery_html_raw: T
                 delivery_html_tcode: string | null;
@@ -343,19 +344,20 @@ port.onMessage.addListener(async (resp) => {
                 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
                 switch (true) {
-                    case (/新西南国际/.test(addressValue)): {
-                        await delay(1000);
-                        port.postMessage({ msg_action: 'buyertrade:is_nswex_freight_processed', db_data, first_query } as PostMessageData)
-                        first_query = false;
-                        break;
-                    }
                     case (/穆院鑫玖电创.*ML\d+#\w+/.test(addressValue)): {
-                        await delay(1000);
-                        port.postMessage({ msg_action: 'buyertrade:is_mulupost_freight_processed', db_data, first_query } as PostMessageData)
+                        chrome_port.enqueueMessage({ msg_action: 'buyertrade:is_mulupost_freight_processed', db_data, first_query } as PostMessageData)
                         first_query = false;
                         break;
                     };
+                    case (/新西南国际/.test(addressValue)): {
+                        chrome_port.enqueueMessage({ msg_action: 'buyertrade:is_nswex_freight_processed', db_data, first_query } as PostMessageData)
+                        first_query = false;
+                        break;
+                    };
+                    
                     default:
+                        console.error(`No freight company found, ${db_data}`)
+                        break;
                 }
 
             }
