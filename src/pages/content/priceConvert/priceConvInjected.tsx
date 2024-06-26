@@ -308,11 +308,15 @@ if (location.href.includes('https://item.taobao.com/')) {
 
   function createDownloadListsButton() {
     if (ran_before === false) {
-      const item_header_el = document.querySelector('[class^="ItemHeader--subTitle"]');
+      const item_header_el = document.querySelector('[class^="Price--priceWrap"]');
       const root_dom = document.querySelector('#root');
 
       const new_button_wrapper = document.createElement('div');
       new_button_wrapper.className = 'tao_convert_download_button';
+      Object.assign(new_button_wrapper.style, {
+        position: 'relative',
+        left: "300px",
+      });
 
       const new_modal_wrapper = document.createElement('div');
       new_modal_wrapper.className = 'taomodal_image_gallery_wrapper';

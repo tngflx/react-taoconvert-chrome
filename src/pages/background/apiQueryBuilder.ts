@@ -54,14 +54,18 @@ export class queryBuilder extends h5Encryption {
                         if (details.tabId === newTab.id) {
                             chrome.webNavigation.onCompleted.removeListener(onCompletedListener);
 
-                            chrome.runtime.sendMessage({ msg_action: 'taoworld_login_form' }, (response) => {
-                                setTimeout(() => {
-                                    chrome.tabs.remove(newTab.id, () => {
-                                        console.log('Temporary tab closed.');
-                                        resolve();
-                                    });
-                                }, 3000);
-                            });
+                            // chrome.runtime.sendMessage({ msg_action: 'taoworld_login_form' }, (response) => {
+                            //     setTimeout(() => {
+                            //         chrome.tabs.remove(newTab.id, () => {
+                            //             console.log('Temporary tab closed.');
+                            //             resolve();
+                            //         });
+                            //     }, 3000);
+                            // });
+
+                            // Use port to establish long-lived connection
+                            const port = chrome.runtime.connect(details.tabId.toString(), { name: 'content-script' });
+                            port.postMessage({ msg_action: 'taoworld_login_form' });
                         }
                     });
                 });

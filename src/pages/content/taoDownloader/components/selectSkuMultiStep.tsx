@@ -43,22 +43,15 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     const [keyToObserveState, setKeyToObserveState] = useState({});
     const main_selected_prod_key = keyToObserveState?.["main_product_title"] || '';
     const target_key_to_observe = keyToObserveState?.["parentKey"] || '';
+    const last_key_prodvdata_notnested = Object.keys(productVariationsData).pop();
+
     const clickCount = useRef(0);
-
-    const updateNestedVariants = (variants, keys, value) => {
-        const lastKey = keys.join('/');
-        const parentKeys = keys.slice(0, -1).join('/');
-
-        if (!variants[parentKeys]) {
-            variants[parentKeys] = {};
-        }
-        variants[parentKeys][lastKey] = value;
-    };
 
     const handleCheckboxChange = ({
         main_product_title,
         variant: { current_variant_val = undefined, current_variant_key = undefined } = {},
     }) => {
+
         if (!current_variant_val && main_product_title) {
             setKeyToObserveState(prev_obj_to_observe => {
                 let new_key_to_observe = { ...prev_obj_to_observe };
@@ -69,26 +62,67 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         return prevSelectedVariants.filter(item => Object.keys(item)[0] !== main_product_title);
                     });
                 } else {
-                    new_key_to_observe = {
-                        main_product_title,
-                    };
+                    new_key_to_observe = { main_product_title };
                 }
                 return new_key_to_observe;
             });
             return;
         }
 
+        const insertVariantRecursively = (obj, current_combined_vkey, current_parent_vkey = '') => {
+            const keys = Object.keys(obj);
+            const [category, current_val] = current_combined_vkey.split('/')
+            const is_deepest_vkey = keys.some(key => key.includes(last_key_prodvdata_notnested))
+            const is_same_category = keys.some(key => key.includes(category))
+
+            // Check if at the deepest level by verifying there are no further nested objects
+            const is_at_deepest_level = !keys.some(key => typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key]));
+
+            if (keys.length === 0) {
+                // Base case: if obj is empty, insert the current_combined_vkey directly
+                obj[current_combined_vkey] = {};
+            } else {
+
+                if (is_same_category) {
+                    if (is_deepest_vkey) {
+                        obj[current_combined_vkey] = { price: 0, quantity: 0 };
+                    } else {
+                        obj[current_combined_vkey] = {};
+
+                    }
+                }
+
+                // Iterate through the keys to find the deepest level
+                for (let key of keys) {
+                    if (typeof obj[key] === 'object' && obj[key] !== null && !key.includes(category)) {
+                        // Recursive case: traverse deeper into the object
+                        insertVariantRecursively(obj[key], current_combined_vkey, key);
+                    }
+                }
+
+            }
+
+            if (is_at_deepest_level) {
+                setKeyToObserveState(prev_obj_to_observe => ({
+                    ...prev_obj_to_observe,
+                    parentKey: current_parent_vkey || current_combined_vkey
+                }));
+            }
+        };
+
+
         setSelectedVariantsState(prevSelectedVariants => {
             const deep_cloned_prevselectvariants = prevSelectedVariants.map(variant => ({ ...variant }));
-
             const existing_variant_index = deep_cloned_prevselectvariants.findIndex(item => Object.keys(item)[0] === main_selected_prod_key);
-            const current_combined_vkey = `${current_variant_key}/${current_variant_val}`;
+            const current_combined_vkey = current_variant_key ? `${current_variant_key}/${current_variant_val}` : current_variant_val;
 
             if (existing_variant_index !== -1) {
                 const existing_product_obj = deep_cloned_prevselectvariants[existing_variant_index];
                 const existing_variant_objs = existing_product_obj[main_selected_prod_key];
 
-                if (existing_variant_objs[target_key_to_observe]?.hasOwnProperty(current_combined_vkey)) {
+                const is_existing_same_current_vkey = Object.keys(existing_variant_objs).find(key => key.includes(current_variant_key));
+
+                if (existing_variant_objs.hasOwnProperty(current_combined_vkey) || existing_variant_objs[target_key_to_observe]?.hasOwnProperty(current_combined_vkey)) {
                     clickCount.current = clickCount.current + 1;
                     if (clickCount.current === 1) {
                         setTimeout(() => {
@@ -123,22 +157,17 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     }
                     return deep_cloned_prevselectvariants;
                 } else {
-                    updateNestedVariants(existing_variant_objs, [target_key_to_observe, current_combined_vkey], { price: '', quantity: '' });
+                    insertVariantRecursively(existing_variant_objs, current_combined_vkey);
 
-                    setKeyToObserveState(prev_obj_to_observe => ({
-                        ...prev_obj_to_observe,
-                        parentKey: current_combined_vkey
-                    }));
+                    const newProduct = {
+                        [main_selected_prod_key]: existing_variant_objs
+                    };
+
+                    const newSelectedVariants = [...prevSelectedVariants];
+                    newSelectedVariants[existing_variant_index] = newProduct;
+
+                    return newSelectedVariants;
                 }
-
-                const newProduct = {
-                    [main_selected_prod_key]: existing_variant_objs
-                };
-
-                const newSelectedVariants = [...prevSelectedVariants];
-                newSelectedVariants[existing_variant_index] = newProduct;
-
-                return newSelectedVariants;
             } else {
                 setKeyToObserveState(prev_obj_to_observe => ({
                     ...prev_obj_to_observe,
@@ -149,7 +178,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     ...prevSelectedVariants,
                     {
                         [main_selected_prod_key]: {
-                            [current_combined_vkey]: { price: '', quantity: '' }
+                            [current_combined_vkey]: {}
                         }
                     }
                 ];
@@ -157,34 +186,40 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         });
     };
 
+
     const isVariantValueSelected = (variantKey) => {
         let deepestMatchFound = false;
 
-        const checkNestedVariant = (selectedVariants, currentParentKey) => {
+        const checkNestedVariant = (selectedVariants, currentParentKey, depth = 0) => {
+            console.log(`Depth: ${depth}, Current parent key: ${currentParentKey}, Current level:,`, selectedVariants);
+
+            if (selectedVariants.hasOwnProperty(variantKey)) {
+                deepestMatchFound = true;
+                return;
+            }
+
             Object.keys(selectedVariants).forEach((key) => {
-                if (selectedVariants.hasOwnProperty(variantKey)) {
-                    deepestMatchFound = true;
-                    return;
-                }
-                if (key === currentParentKey && selectedVariants[key] instanceof Object) {
+                if (key == currentParentKey && selectedVariants[key] instanceof Object && Object.keys(selectedVariants[key]).includes(variantKey)) {
                     checkNestedVariant(selectedVariants[key], currentParentKey);
                 }
             });
         };
 
-        selectedVariantsState.some((item) => {
+        selectedVariantsState.forEach((item) => {
             const mainTitle = Object.keys(item)[0];
             if (mainTitle !== main_selected_prod_key) {
                 return false;
             }
             const selectedVariants = item[mainTitle];
-            const parentKey = keyToObserveState?.["parentKey"] || '';
+            const parentKey = keyToObserveState?.parentKey || "";
 
             checkNestedVariant(selectedVariants, parentKey);
         });
 
         return deepestMatchFound;
     };
+
+
 
     const handleNextStep = () => {
         console.log('selectedVariants', selectedVariantsState);

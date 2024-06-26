@@ -61,7 +61,7 @@ export default defineConfig({
                 priceConvStyle: resolve(pagesDir, 'content', 'priceConvert', 'style.scss'),
                 buyerTrade: resolve(pagesDir, 'content', 'buyerTradePage', 'index.ts'),
                 tailwindStyle: resolve(srcDir, 'assets', 'style', 'tailwind.css'),
-                taoWorld: resolve(pagesDir, 'content', 'taoWorld', 'taoWorldInjected.ts'),
+                taoWorld: resolve(pagesDir, 'content', 'taoWorld', 'index.ts'),
                 radixStyle: resolve(srcDir, 'assets', 'style', 'radixUI.css'),
                 freightPage: resolve(pagesDir, 'content', 'freightPage', 'index.ts'),
                 background: resolve(pagesDir, 'background', 'index.ts'),

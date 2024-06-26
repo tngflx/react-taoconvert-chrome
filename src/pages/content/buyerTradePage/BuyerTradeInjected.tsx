@@ -2,11 +2,11 @@
 import { render } from 'react-dom';
 import { DOMTools } from '../utils/misc';
 import ButtonRenderer from '../sharedComponents/renderer/taoButtonRenderer';
-import { portMessageQueue } from '../utils/portMessageHandler';
+import { chromePortMsgHandler } from '../utils/portMessageHandler';
 const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
 
 const port = chrome.runtime.connect({ name: 'content-script' });
-const chrome_port = new portMessageQueue(port);
+const chrome_port = new chromePortMsgHandler(port);
 
 const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
     const button_container = document.createElement('div');
@@ -340,8 +340,6 @@ port.onMessage.addListener(async (resp) => {
 
                     return addressCell ? addressCell.fields.value : acc;
                 }, null);
-
-                const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
                 switch (true) {
                     case (/穆院鑫玖电创.*ML\d+#\w+/.test(addressValue)): {
