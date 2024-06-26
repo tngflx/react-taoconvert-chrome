@@ -70,13 +70,10 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         }
 
         const insertVariantRecursively = (obj, current_combined_vkey, current_parent_vkey = '') => {
-            const keys = Object.keys(obj);
+            let keys = Object.keys(obj);
             const [category, current_val] = current_combined_vkey.split('/')
             const is_deepest_vkey = keys.some(key => key.includes(last_key_prodvdata_notnested))
             const is_same_category = keys.some(key => key.includes(category))
-
-            // Check if at the deepest level by verifying there are no further nested objects
-            const is_at_deepest_level = !keys.some(key => typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key]));
 
             if (keys.length === 0) {
                 // Base case: if obj is empty, insert the current_combined_vkey directly
@@ -101,6 +98,8 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 }
 
             }
+            // Check if at the deepest level by verifying there are no further nested objects
+            const is_at_deepest_level = !Object.keys(obj).some(key => typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key]));
 
             if (is_at_deepest_level) {
                 setKeyToObserveState(prev_obj_to_observe => ({
