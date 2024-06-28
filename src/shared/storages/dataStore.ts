@@ -12,8 +12,6 @@ type RemappedSkuBase = [];
 type CombinedData = {
     remappedReviewData: RemappedReviewData;
     remappedSkuBase: RemappedSkuBase;
-    loadState: boolean;
-    cookie: any
 }
 
 type DataStorage = BaseStorage<CombinedData> & {
@@ -26,15 +24,13 @@ type DataStorage = BaseStorage<CombinedData> & {
 
 const dataStorage = createStorage<CombinedData>('data-storage-key', {
     remappedReviewData: [{ skuText: {}, review_data: [] }],
-    remappedSkuBase: [],
-    loadState: false,
-    cookie: []
+    remappedSkuBase: []
 }, {
     storageType: StorageType.Local,
     liveUpdate: true,
 });
 
-const internalWorkStorage = createStorage<CombinedData>('internal-work-key', {
+const internalCacheStorage = createStorage<CombinedData & { loadState: boolean, cookie: any[] }>('internal-cache-key', {
     remappedReviewData: [{ skuText: {}, review_data: [] }],
     remappedSkuBase: [],
     loadState: false,
@@ -59,19 +55,19 @@ const dataStore: DataStorage = {
         }));
     },
     setLoadState: (state) => {
-        return internalWorkStorage.set(currentData => ({
+        return internalCacheStorage.set(currentData => ({
             ...currentData,
             loadState: state,
         }));
     },
     setCookieData: (data) => {
-        return internalWorkStorage.set(currentData => ({
+        return internalCacheStorage.set(currentData => ({
             ...currentData,
             cookie: data,
         }));
     },
     getLoadState: () => {
-        return dataStorage.get().then(currentData => currentData.loadState);
+        return internalCacheStorage.get().then(currentData => currentData.loadState);
     }
 };
 
