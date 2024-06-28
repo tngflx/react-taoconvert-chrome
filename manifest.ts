@@ -11,7 +11,7 @@ const manifest: chrome.runtime.ManifestV3 = {
     permissions: [
         'storage', 'sidePanel', "cookies", "webRequest",
         "unlimitedStorage", "tabs", "debugger", "scripting",
-        "webNavigation", "background"
+        "webNavigation", "background","notifications"
     ],
     host_permissions: ["*://*/*"],
     background: {
@@ -30,10 +30,6 @@ const manifest: chrome.runtime.ManifestV3 = {
         {
             matches: ["https://buyertrade.taobao.com/*"],
             js: ['src/pages/buyerTrade/index.js']
-        },
-        {
-            matches: ["https://world.taobao.com/*"],
-            js: ['src/pages/taoWorld/index.js']
         },
         {
             matches: ["https://s.taobao.com/*", "https://item.taobao.com/*", "https://world.taobao.com/*", "https://*.tmall.com/*"],

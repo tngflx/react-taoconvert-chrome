@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import * as Checkbox from '@radix-ui/react-checkbox';
 import useStorage from '../../../../shared/hooks/useStorage';
-import dataStore from '../../../../shared/storages/reviewItemSkuBase';
+import dataStore from '../../../../shared/storages/dataStore';
 import { CheckIcon } from '@radix-ui/react-icons';
 import { ObjectMgr } from '../../utils/objectMgr';
 import { useRef } from 'react';

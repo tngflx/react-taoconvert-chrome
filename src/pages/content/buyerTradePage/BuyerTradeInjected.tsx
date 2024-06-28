@@ -3,6 +3,7 @@ import { render } from 'react-dom';
 import { DOMTools } from '../utils/misc';
 import ButtonRenderer from '../sharedComponents/renderer/taoButtonRenderer';
 import { chromePortMsgHandler } from '../utils/portMessageHandler';
+import { getSecretByContentS } from '@root/src/shared/h5api.taobao/handshake';
 const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
 
 const port = chrome.runtime.connect({ name: 'content-script' });
@@ -32,6 +33,8 @@ const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
         button_container
     );
 };
+
+getSecretByContentS();
 
 /**
  * TO NOTE :

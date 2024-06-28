@@ -1,5 +1,7 @@
-import { rejects } from "assert";
 import { h5Encryption } from "../../shared/h5api.taobao/sign"
+import { TabManager } from "./helper/tabManager";
+const tab_manager = new TabManager();
+
 interface fetchOptions {
     headers: { "accept-language": string; "sec-fetch-dest": string; "sec-fetch-mode": string; "sec-fetch-site": string; "sec-gpc": string; Cookie: any; "Content-Type": string; }; referrerPolicy: string; method: string; mode: string
 }
@@ -49,48 +51,35 @@ export class queryBuilder extends h5Encryption {
         const refreshTaobaoWorldPage = (retries): Promise<void> => {
             return new Promise((resolve) => {
                 console.log('Opening temporary tab for refresh...');
-                chrome.tabs.create({ url: 'https://world.taobao.com' }, (newTab) => {
-                    chrome.webNavigation.onCompleted.addListener(function onCompletedListener(details) {
-                        if (details.tabId === newTab.id) {
-                            chrome.webNavigation.onCompleted.removeListener(onCompletedListener);
-
-                            // chrome.runtime.sendMessage({ msg_action: 'taoworld_login_form' }, (response) => {
-                            //     setTimeout(() => {
-                            //         chrome.tabs.remove(newTab.id, () => {
-                            //             console.log('Temporary tab closed.');
-                            //             resolve();
-                            //         });
-                            //     }, 3000);
-                            // });
-
-                            // Use port to establish long-lived connection
-                            const port = chrome.runtime.connect(details.tabId.toString(), { name: 'content-script' });
-                            port.postMessage({ msg_action: 'taoworld_login_form' });
-                        }
+                tab_manager.createTab('https://world.taobao.com', { msg_action: 'taoworld_login_form' }, () => {
+                    tab_manager.addListener((resp) => {
+                        console.log('TabManager response:', resp);
+                        resolve()
                     });
                 });
-
             });
         }
 
-        if (queryBuilder.h5_tk_token_array && queryBuilder.h5_tk_token_array.length > 0) {
-
-            this.setH5EncData();
-            return;
-        }
+        
         const maxRetries = 3;
         let retries = maxRetries;
         do {
             try {
+                if (queryBuilder.h5_tk_token_array && queryBuilder.h5_tk_token_array.length > 0) {
+
+                    this.setH5EncData();
+                    break;
+                }
+                
                 const cookieStores = await chrome.cookies.getAllCookieStores();
                 const cookieNames = ['_m_h5_tk', '_m_h5_tk_enc'];
 
                 const cookiePromises = cookieStores.flatMap(cookieStore =>
                     cookieNames.map(cookieName =>
                         new Promise((resolve, reject) => {
-                            chrome.cookies.get({ url: 'https://taobao.com', name: cookieName, storeId: cookieStore.id }, async cookie => {
+                            chrome.cookies.get({ url: 'https://world.taobao.com', name: cookieName, storeId: cookieStore.id }, async cookie => {
                                 if (cookie)
-                                    resolve(cookie)
+                                    reject(cookie)
                                 else {
                                     reject('Cookie not found from taobao.com')
                                 }
@@ -110,23 +99,46 @@ export class queryBuilder extends h5Encryption {
 
             } catch (error) {
                 console.error("Error retrieving cookies:", error);
-
+                chrome.storage.local.get().then(data => {
+                    queryBuilder.h5_tk_token_array = data.cookie;
+                    console.log('Local storage data:', data);
+                });
                 // Remove cookies
-                await new Promise((resolve, reject) => {
-                    chrome.cookies.getAll({ url: 'https://taobao.com' }, function (cookies) {
-                        cookies.forEach(cookie => {
-                            chrome.cookies.remove({ url: "http" + (cookie.secure ? "s" : "") + "://" + cookie.domain + cookie.path, name: cookie.name }, details => {
-                                console.log('Cookie removed:', details);
-                                resolve(details)
-                            });
-                        });
+                chrome.notifications.create({
+                    type: 'basic',
+                    iconUrl: 'icon.png', // Path to the icon
+                    title: 'Delete Cookies?',
+                    message: 'Do you want to delete cookies from taobao.com?',
+                    buttons: [
+                        { title: 'Yes' },
+                        { title: 'No' }
+                    ],
+                    isClickable: false,
+                }, notificationId => {
+                    // Listener for the button click
+                    chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
+                        if (notificationId === notifId) {
+                            if (btnIdx === 0) { // Yes button
+                                // Code to delete cookies
+                                chrome.cookies.getAll({ url: 'https://taobao.com' }, function (cookies) {
+                                    cookies.forEach(cookie => {
+                                        chrome.cookies.remove({ url: "http" + (cookie.secure ? "s" : "") + "://" + cookie.domain + cookie.path, name: cookie.name }, details => {
+                                            // Optionally log the cookie removal
+                                            console.log('Cookie removed:', details);
+                                        });
+                                    });
+                                });
+                            } else if (btnIdx === 1) { // No button
+                                // Handle the case where the user selects "No"
+                                console.log('User chose not to delete cookies.');
+                            }
+                        }
                     });
                 });
 
                 // Refresh page
                 await refreshTaobaoWorldPage(retries);
 
-                queryBuilder.h5_tk_token_array = null;
             }
 
             retries--;

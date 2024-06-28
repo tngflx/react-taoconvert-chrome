@@ -1,6 +1,6 @@
 ﻿import React, {  useReducer } from "react"
 import useStorage from "../../../shared/hooks/useStorage";
-import dataStore from "../../../shared/storages/reviewItemSkuBase";
+import dataStore from "../../../shared/storages/dataStore";
 import { convertImageUrl } from "../utils/imageResize";
 import * as Dialog from '@radix-ui/react-dialog';
 

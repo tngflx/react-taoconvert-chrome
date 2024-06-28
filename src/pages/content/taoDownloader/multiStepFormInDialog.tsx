@@ -2,13 +2,10 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { forwardRef, useState, useEffect } from 'react';
 import { ImageTiles } from '../taoDownloader/reviewTabInjected';
-import useStorage from '../../../shared/hooks/useStorage';
-import dataStore, { loadState } from '../../../shared/storages/reviewItemSkuBase';
 import SelectSkuFirstStep from './components/selectSkuMultiStep';
 import RadixRenderer from '../sharedComponents/renderer/radixUIRenderer';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
-
-type ImageGalleryDialogProps = {};
+import dataStore from '@root/src/shared/storages/dataStore';
 
 const _multiStepFormInDialog = ({ shadowRootModal }) => {
     const [container, setContainer] = useState(null);
@@ -32,10 +29,7 @@ const _multiStepFormInDialog = ({ shadowRootModal }) => {
                 return null; // Handle unexpected step values
         }
     }
-
-    let isLoading = useStorage(loadState)
-
-    console.log(isLoading)
+    const isLoading = dataStore.getLoadState();
 
     return (
         <>

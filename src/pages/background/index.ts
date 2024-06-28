@@ -3,6 +3,8 @@ import 'webextension-polyfill';
 import { idb } from '../../shared/storages/indexDB';
 import { queryBuilder } from './apiQueryBuilder';
 import { MulupostStatusChecker, NswexFreightStatusType, NswexStatusChecker } from './freightStatusHandler';
+import { TabManager } from './helper/tabManager';
+const tab_manager = new TabManager();
 
 reloadOnUpdate('pages/background');
 
@@ -20,7 +22,6 @@ interface TrackingInfo {
  * One-time chrome message listener and short-lived
  * each case get its own destructured request due to race condition
  */
-let nswex_script_loaded = false;
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     const { msg_action } = request;
     const [src_msg, child_msg] = msg_action.split(':');
@@ -28,6 +29,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     switch (src_msg) {
         case 'buyertrade': {
             switch (child_msg) {
+                case 'get_secret': {
+                    break;
+                }
+
                 case 'get_buyertrade_tracking_code': {
                     chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
                         const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
@@ -110,40 +115,13 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             switch (child_msg) {
                 case 'create_nswex_tab': {
                     const { selected_product_infos, url } = request;
-                    chrome.tabs.create({ url }, function (newTab) {
-                        chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo, tab) {
-                            if (tabId === newTab.id && changeInfo.status === 'complete' && nswex_script_loaded) {
-                                const port = chrome.tabs.connect(tabId);
-                                port.postMessage({ msg_action: 'nswex_fill_form', ...selected_product_infos });
-                                nswex_script_loaded = false;
-                                chrome.tabs.onUpdated.removeListener(listener);
-                            }
-                        });
-                    });
+
+                    tab_manager.createTab(url, { msg_action: 'nswex_fill_form', ...selected_product_infos });
                     break;
                 }
                 case 'update_nswex_tab': {
                     const { nswexTab, selected_product_infos, url } = request;
-                    function listener(tabId, changeInfo) {
-                        if (tabId === nswexTab.id && changeInfo.status === 'complete') {
-                            const port = chrome.tabs.connect(nswexTab.id);
-                            port.postMessage({ msg_action: 'nswex_fill_form', ...selected_product_infos });
-                            chrome.tabs.onUpdated.removeListener(listener);
-                        }
-                    }
-
-                    chrome.tabs.onUpdated.addListener(listener);
-                    const chrome_tabs_options = nswexTab.url === url ? { active: true } : { url, active: true };
-
-                    chrome.tabs.update(nswexTab.id, chrome_tabs_options, function (updatedTab) {
-                        if (chrome.runtime.lastError) {
-                            chrome.tabs.onUpdated.removeListener(listener);
-                            console.error(chrome.runtime.lastError);
-                        }
-                        if (nswexTab.url == url) {
-                            listener(updatedTab.id, { status: 'complete' })
-                        }
-                    });
+                    tab_manager.updateTab(nswexTab, url, { msg_action: 'nswex_fill_form', ...selected_product_infos });
                     break;
                 }
             }
@@ -153,8 +131,16 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         case 'nswex': {
             switch (child_msg) {
                 case 'script_loaded': {
-                    nswex_script_loaded = true;
-                    console.log('script_loaded nswex')
+                    break;
+                }
+            }
+            break;
+        }
+
+        case 'taoworld': {
+            switch (child_msg) {
+                case 'attempt_relogin': {
+                    tab_manager.createTab('https://world.taobao.com/', { msg_action: 'taoworld_login_form' });
                     break;
                 }
             }

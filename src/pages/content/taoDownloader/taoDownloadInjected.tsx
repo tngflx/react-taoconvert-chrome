@@ -1,11 +1,11 @@
 ﻿import Result from 'postcss/lib/result';
-import dataStore, { loadState } from '../../../shared/storages/reviewItemSkuBase';
+import dataStore from '../../../shared/storages/dataStore';
 import { DOMTools, MutationObserverManager, promisify } from '../utils/misc';
 import { processReviewTab } from './reviewTabInjected';
 const mutObserverManager = new MutationObserverManager();
 
 export async function taoDownloader() {
-  await loadState.setLoad(true);
+  await dataStore.setLoadState(true);
 
   const all_sku_items = document.querySelectorAll('div.skuItemWrapper .skuItem');
 
@@ -80,7 +80,7 @@ export async function taoDownloader() {
     },
     true,
   );
-  
+
   if (existing_local_stored_chrome_nonempty) return;
 
   const [h5api_data, remapped_review_data] = await Promise.allSettled([
@@ -209,5 +209,5 @@ export async function taoDownloader() {
     const product_image = sku_item.querySelector('img[class="skuIcon"]')?.getAttribute('src');
   });
 
-  await loadState.setLoad(false);
+  await dataStore.setLoadState(true);
 }

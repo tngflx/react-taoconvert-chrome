@@ -6,6 +6,7 @@ import { CurrencyAPI } from '../utils/currencyAPI';
 import MultiStepFormInDialog from '../taoDownloader/multiStepFormInDialog';
 import { priceBoxRenderer } from '../sharedComponents/renderer/priceBoxRenderer';
 import { PriceBox } from '../sharedComponents/priceBoxComponent';
+import { getSecretByContentS } from '@root/src/shared/h5api.taobao/handshake';
 const { findChildThenParentElbyClassName } = DOMTools;
 
 // Create an instance of the CurrencyAPI class
@@ -71,7 +72,9 @@ const boxRenderer = new priceBoxRenderer();
 getCurrencyRate().then(currency_rate => {
   boxRenderer.currency_rate = currency_rate;
   boxRenderer.currency_change = currency_change;
-});
+}).then(() => {
+  getSecretByContentS();
+})
 
 /////////////////////////////////////[https://world.taobao.com/]/////////////////////////////////////
 //effect only content in taobao home page

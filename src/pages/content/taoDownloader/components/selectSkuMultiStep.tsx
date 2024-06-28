@@ -1,7 +1,7 @@
 ﻿import React, { useState, useMemo, useRef } from 'react';
 import * as Checkbox from '@radix-ui/react-checkbox';
 import useStorage from '../../../../shared/hooks/useStorage';
-import dataStore from '../../../../shared/storages/reviewItemSkuBase';
+import dataStore from '../../../../shared/storages/dataStore';
 import { CheckIcon } from '@radix-ui/react-icons';
 import { ObjectMgr } from '../../utils/objectMgr';
 const objectMgr = new ObjectMgr();
@@ -98,15 +98,6 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 }
 
             }
-            // Check if at the deepest level by verifying there are no further nested objects
-            const is_at_deepest_level = !Object.keys(obj).some(key => typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key]));
-
-            if (is_at_deepest_level) {
-                setKeyToObserveState(prev_obj_to_observe => ({
-                    ...prev_obj_to_observe,
-                    parentKey: current_parent_vkey || current_combined_vkey
-                }));
-            }
         };
 
 
@@ -157,6 +148,23 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     return deep_cloned_prevselectvariants;
                 } else {
                     insertVariantRecursively(existing_variant_objs, current_combined_vkey);
+                    console.log(existing_variant_objs)
+
+                    const deepestObjectWEmpty = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
+                    let targetKey = current_combined_vkey;
+
+                    // Traverse to the deepest empty object
+                    if (deepestObjectWEmpty) {
+                        const keys = Object.keys(deepestObjectWEmpty);
+                        targetKey = keys.length > 0 ? keys[keys.length - 1] : current_combined_vkey;
+                    } else if (!deepestObjectWEmpty && !is_existing_same_current_vkey) {
+                        targetKey = Object.keys(existing_variant_objs).pop() || current_combined_vkey;
+                    }
+
+                    setKeyToObserveState(prev_obj_to_observe => ({
+                        ...prev_obj_to_observe,
+                        parentKey: targetKey
+                    }));
 
                     const newProduct = {
                         [main_selected_prod_key]: existing_variant_objs
@@ -190,7 +198,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         let deepestMatchFound = false;
 
         const checkNestedVariant = (selectedVariants, currentParentKey, depth = 0) => {
-            console.log(`Depth: ${depth}, Current parent key: ${currentParentKey}, Current level:,`, selectedVariants);
+            // console.log(`Depth: ${depth}, Current parent key: ${currentParentKey}, Current level:,`, selectedVariants);
 
             if (selectedVariants.hasOwnProperty(variantKey)) {
                 deepestMatchFound = true;
