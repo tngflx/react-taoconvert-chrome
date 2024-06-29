@@ -1,25 +1,30 @@
 import { BaseStorage, createStorage, StorageType } from '@src/shared/storages/base';
 
-type RemappedReviewData = [{
+type RemappedReviewData = {
     skuText: {
-        [key: string]: any
-    }
+        [key: string]: any;
+    };
     review_data: any[];
-} & Record<string, any>]
+}[];
 
-type RemappedSkuBase = [];
+type RemappedSkuBase = any[];
 
 type CombinedData = {
     remappedReviewData: RemappedReviewData;
     remappedSkuBase: RemappedSkuBase;
-}
+};
+
+type InternalCacheData = {
+    loadState: boolean;
+    cookie: any[];
+};
 
 type DataStorage = BaseStorage<CombinedData> & {
     updateRemappedReviewData: (data: RemappedReviewData) => Promise<void>;
     updateRemappedSkuBase: (data: RemappedSkuBase) => Promise<void>;
     setLoadState: (state: boolean) => Promise<void>;
     setCookieData: (data: any) => Promise<void>;
-    getLoadState: () => Promise<boolean>;
+    getInternalCache: () => Promise<InternalCacheData>;
 };
 
 const dataStorage = createStorage<CombinedData>('data-storage-key', {
@@ -30,9 +35,7 @@ const dataStorage = createStorage<CombinedData>('data-storage-key', {
     liveUpdate: true,
 });
 
-const internalCacheStorage = createStorage<CombinedData & { loadState: boolean, cookie: any[] }>('internal-cache-key', {
-    remappedReviewData: [{ skuText: {}, review_data: [] }],
-    remappedSkuBase: [],
+const internalCacheStorage = createStorage<InternalCacheData>('internal-cache-key', {
     loadState: false,
     cookie: []
 }, {
@@ -66,8 +69,8 @@ const dataStore: DataStorage = {
             cookie: data,
         }));
     },
-    getLoadState: () => {
-        return internalCacheStorage.get().then(currentData => currentData.loadState);
+    getInternalCache: () => {
+        return internalCacheStorage.get().then(data => data);
     }
 };
 

@@ -135,12 +135,21 @@ export function createStorage<D>(key: string, fallback: D, config?: StorageConfi
         globalSessionAccessLevelFlag = true;
     }
 
+    const windowEnvCheck = () => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            if (id) {
+                return `${id}_${key}`;
+            }
+        }
+        return key;
+    }
+
     // Register life cycle methods
     const _getDataFromStorage = async (): Promise<D> => {
         checkStoragePermission(storageType);
-        const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        const queryStringKey = `${id}_${key}`;
+        const queryStringKey = windowEnvCheck();
 
         const value = await chrome.storage[storageType].get([queryStringKey]);
         return value[queryStringKey] ?? fallback;
@@ -153,10 +162,7 @@ export function createStorage<D>(key: string, fallback: D, config?: StorageConfi
     const set = async (valueOrUpdate: ValueOrUpdate<D>) => {
         cache = await updateCache(valueOrUpdate, cache);
 
-        const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        // Use the query string as part of the key
-        const queryStringKey = `${id}_${key}`;
+        const queryStringKey = windowEnvCheck();
 
         chrome.storage[storageType].set({ [queryStringKey]: cache }, function () {
             _emitChange();

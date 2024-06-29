@@ -29,7 +29,8 @@ const _multiStepFormInDialog = ({ shadowRootModal }) => {
                 return null; // Handle unexpected step values
         }
     }
-    const isLoading = dataStore.getLoadState();
+    let isLoading = dataStore.getInternalCache();
+    console.log(isLoading);
 
     return (
         <>
