@@ -136,7 +136,7 @@ export function createStorage<D>(key: string, fallback: D, config?: StorageConfi
     }
 
     const windowEnvCheck = () => {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && key !== 'internal-cache-key') {
             const params = new URLSearchParams(window.location.search);
             const id = params.get('id');
             if (id) {

@@ -9,12 +9,12 @@ interface fetchOptions {
         "sec-fetch-mode": string;
         "sec-fetch-site": string;
         "sec-gpc": string;
-        Cookie: any;
         "Content-Type": string;
     };
-    referrerPolicy: string;
+    referrerPolicy?: ReferrerPolicy;
     method: string;
-    mode: string;
+    mode?: RequestMode;
+    credentials?: RequestCredentials;
 }
 
 export class queryBuilder extends h5Encryption {
@@ -23,6 +23,7 @@ export class queryBuilder extends h5Encryption {
     h5_tk_cookies_string: string;
     fetchOptions: fetchOptions;
     static h5_tk_token_array: any[] = []; // Static property to share across instances
+    fetchParam: {};
 
     constructor(url_param_data: any) {
         super();
@@ -30,7 +31,7 @@ export class queryBuilder extends h5Encryption {
         this.params = {
             jsv: '2.6.1',
             appKey: '12574478',
-            t: Date.now(),
+            t: (new Date).getTime(),
             v: '1.0',
             isSec: '0',
             ecode: '0',
@@ -42,40 +43,56 @@ export class queryBuilder extends h5Encryption {
             valueType: 'string',
             preventFallback: 'true',
             type: 'json',
-            data: JSON.stringify(url_param_data),
+            data: JSON.stringify({ ...url_param_data }),
         };
-        this.fetchOptions = {
+        this.fetchOptions  = {
             headers: {
-                "accept-language": "en;q=0.5",
+                "accept-language": "en-US,en;q=0.9",
                 "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
                 "sec-fetch-site": "same-site",
                 "sec-gpc": "1",
-                "Cookie": "",
-                "Content-Type": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
             },
-            referrerPolicy: "strict-origin-when-cross-origin",
             method: "GET",
             mode: "cors"
-        };
+        }
     }
 
-    setH5EncData() {
-        this.h5enc_token = queryBuilder.h5_tk_token_array.reduce((token, cookie) => {
+    async setH5EncData() {
+        const h5_tk_tokens = queryBuilder.h5_tk_token_array.reduce((tokens, cookie) => {
             const cookieName = cookie.hasOwnProperty('name') ? cookie.name : cookie[0];
-            if (cookieName === '_m_h5_tk') {
-                return cookie.value ?? cookie[1];
+            return [...tokens, { [cookieName]: cookie.value ?? cookie[1] }];
+        }, []);
+
+        this.h5enc_token = h5_tk_tokens.reduce((token: string, cookie: any) => {
+            if (cookie.hasOwnProperty('_m_h5_tk')) {
+                return cookie._m_h5_tk;
             }
-            return token.split('_')[0];
-        }, '');;
+            return token?.split('_')[0];
+        }, '');
+
         this.h5enc_time = this.params.t;
         this.h5enc_data = this.params.data;
 
-        this.h5_tk_cookies_string = queryBuilder.h5_tk_token_array
-            .map(cookie => `${cookie.name}=${cookie.value}`)
+        this.h5_tk_cookies_string = h5_tk_tokens
+            .map(cookie => `${Object.keys(cookie)[0]}=${Object.values(cookie)[0]}`)
             .join('; ');
-        this.fetchOptions.headers.Cookie = this.h5_tk_cookies_string;
+
+        h5_tk_tokens.forEach(cookie => {
+            chrome.cookies.set({
+                url: 'https://taobao.com',
+                name: Object.keys(cookie)[0],
+                value: Object.values(cookie)[0] as string,
+                domain: '.taobao.com',
+                path: '/',
+                secure: true,
+                sameSite: 'no_restriction'
+            });
+        })
+
     }
+
 
     async initH5EncDataWithRetries() {
         const maxRetries = 3;
@@ -85,13 +102,13 @@ export class queryBuilder extends h5Encryption {
                 if (queryBuilder.h5_tk_token_array.length === 0) {
                     const cookieStores = await chrome.cookies.getAllCookieStores();
                     const cookieNames = ['_m_h5_tk', '_m_h5_tk_enc'];
-    
+
                     queryBuilder.h5_tk_token_array = await Promise.all(
                         cookieStores.flatMap(cookieStore =>
                             cookieNames.map(cookieName =>
                                 new Promise((resolve, reject) => {
-                                    chrome.cookies.get({ url: 'https://world.taobao.com', name: cookieName, storeId: cookieStore.id }, cookie => {
-                                        if (cookie) reject(cookie);
+                                    chrome.cookies.get({ url: 'https://taobao.com', name: cookieName, storeId: cookieStore.id }, cookie => {
+                                        if (cookie) resolve(cookie);
                                         else reject(`Cookie ${cookieName} not found in store ${cookieStore.id}`);
                                     });
                                 })
@@ -99,7 +116,7 @@ export class queryBuilder extends h5Encryption {
                         )
                     );
                 }
-    
+
                 // Set H5 encryption data if cookies are available
                 if (queryBuilder.h5_tk_token_array.length > 0) {
                     this.setH5EncData();
@@ -117,7 +134,7 @@ export class queryBuilder extends h5Encryption {
     }
 
     async refreshTaobaoWorldPage() {
-        return new Promise((resolve) => {
+        return new Promise<void>((resolve) => {
             console.log('Opening temporary tab for refresh...');
             tab_manager.createTab('https://world.taobao.com', { msg_action: 'taoworld_login_form' }, () => {
                 tab_manager.addListener((resp) => {
@@ -129,8 +146,15 @@ export class queryBuilder extends h5Encryption {
     }
 
     async handleCookieRetrievalError() {
-        chrome.storage.local.get('internal-cache-key', (data) => {
-            queryBuilder.h5_tk_token_array = Object.entries(data?.['internal-cache-key']?.cookie) ?? [];
+        await new Promise<void>((resolve, reject) => {
+            chrome.storage.local.get('internal-cache-key', (data) => {
+                if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                } else {
+                    queryBuilder.h5_tk_token_array = Object.entries(data?.['internal-cache-key']?.cookie) ?? [];
+                    resolve();
+                }
+            });
         });
 
         // Notify user to delete cookies
@@ -167,6 +191,7 @@ export class queryBuilder extends h5Encryption {
 
     createFetch() {
         const queryString = this.processQueryString();
+
         const url = `https://h5api.m.taobao.com/h5/${this.params['api']}/1.0/?${queryString}`;
 
         return fetch(url, this.fetchOptions)
@@ -192,11 +217,12 @@ export class queryBuilder extends h5Encryption {
         return this.createFetch();
     }
 
-    async fetchMoreItemDetails() {
+    async fetchItemLogistics() {
         await this.initH5EncDataWithRetries();
-        this.params['jsv'] = '2.7';
-        this.params['api'] = "mtop.taobao.query.detail";
+        this.params['jsv'] = '2.7.0';
+        this.params['api'] = "mtop.taobao.logistics.detailorlist.query";
         this.params['sign'] = this.signH5ItemPageReq();
+        this.params['ttid'] = "#t#ip##_h5_web_default"
         return this.createFetch();
     }
 

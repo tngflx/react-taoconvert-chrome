@@ -9,6 +9,8 @@ export class chromePortMsgHandler {
     this.processing = false;
 
     // Listen for a message from the background script indicating it has finished processing
+    // in background.ts, port.postMessage({ done_process_entry: true }) is necessary for next message to be processed
+
     this.port.onMessage.addListener((response: any) => {
       if (response.done_process_entry) {
         this.processing = false;

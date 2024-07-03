@@ -5,33 +5,34 @@ export class ObjectMgr {
 
     findObject(options: { obj: Record<string, any>, value?: any, flag: string }): any | undefined {
         const { obj, value, flag } = options;
-        const queue = [obj];
-        while (queue.length > 0) {
-            const currentObj = queue.shift();
+        const stack = [{ obj, parentKey: null }];
+
+        while (stack.length > 0) {
+            const { obj: currentObj, parentKey } = stack.pop();
+
             for (const key in currentObj) {
                 if (currentObj.hasOwnProperty(key)) {
                     const objValue = currentObj[key];
                     switch (flag) {
                         case ObjectMgr.FIND_EMPTY_VALUE:
                             if (objValue && typeof objValue === 'object' && Object.keys(objValue).length === 0) {
-                                return currentObj;
+                                return { parentKey, currentObj };
                             }
                             break;
                         case ObjectMgr.FIND_MATCH_VALUE:
-                            if (Object.keys(objValue).some(key => key === value)) {
+                            if (Object.keys(objValue).some(k => k === value)) {
                                 return currentObj;
                             }
-
                             break;
                         case ObjectMgr.FIND_MATCH_PARENTCHILD:
-                            if (Object.keys(objValue).some(key => key === value)) {
+                            if (Object.keys(objValue).some(k => k === value)) {
                                 return currentObj;
                             } else {
                                 for (const nestedKey in objValue) {
                                     if (objValue.hasOwnProperty(nestedKey)) {
                                         const nestedObjValue = objValue[nestedKey];
                                         if (typeof nestedObjValue === 'object') {
-                                            if (Object.keys(nestedObjValue).some(key => key === value)) {
+                                            if (Object.keys(nestedObjValue).some(k => k === value)) {
                                                 return currentObj;
                                             }
                                         }
@@ -41,7 +42,7 @@ export class ObjectMgr {
                             break;
                     }
                     if (typeof objValue === 'object') {
-                        queue.push(objValue);
+                        stack.push({ obj: objValue, parentKey: currentObj });
                     }
                 }
             }

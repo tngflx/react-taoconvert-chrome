@@ -34,35 +34,30 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 }
 
                 case 'get_buyertrade_tracking_code': {
-                    chrome.cookies.getAll({ url: sender.origin }, (cookies) => {
-                        const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+                    const apiUrl = `https://buyertrade.taobao.com/trade/json/transit_step.do?bizOrderId=${request.orderId}`
+                    fetch(apiUrl, {
+                        method: "GET",
+                        headers: {
+                            "Accept": "application/json",
+                        },
+                    })
+                        .then(response => response.arrayBuffer())
+                        .then(async data => {
+                            const decoder = new TextDecoder('gbk');
+                            const parsedData: TrackingInfo = JSON.parse(decoder.decode(data));
 
-                        const apiUrl = `https://buyertrade.taobao.com/trade/json/transit_step.do?bizOrderId=${request.orderId}`
-                        fetch(apiUrl, {
-                            method: "GET",
-                            headers: {
-                                "Cookie": cookieString,
-                                "Accept": "application/json",
-                            },
+                            if (parsedData?.expressName && parsedData?.expressId) {
+                                const { expressName, expressId } = parsedData;
+                                sendResponse({ expressId, expressName });
+                            } else {
+                                sendResponse(null);
+                            }
                         })
-                            .then(response => response.arrayBuffer())
-                            .then(async data => {
-                                const decoder = new TextDecoder('gbk');
-                                const parsedData: TrackingInfo = JSON.parse(decoder.decode(data));
+                        .catch(error => {
+                            console.error("Error querying buyertrade.taobao.com :", error);
+                            sendResponse({ status: false, error: error.message });
 
-                                if (parsedData?.expressName && parsedData?.expressId) {
-                                    const { expressName, expressId } = parsedData;
-                                    sendResponse({ expressId, expressName });
-                                } else {
-                                    sendResponse(null);
-                                }
-                            })
-                            .catch(error => {
-                                console.error("Error querying buyertrade.taobao.com :", error);
-                                sendResponse({ status: false, error: error.message });
-
-                            });
-                    });
+                        });
                     break;
                 }
                 case 'get_itempage_products': {
@@ -91,13 +86,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                         })
                     break;
                 }
-                case 'get_itempage_products_moredetails': {
+                case 'get_itempage_products_logistics': {
                     // Mainly to get address of product
                     const { orderId } = request;
-                    const change_param_data = { "source": 1, "bizOrderId": orderId, "requestIdentity": "#t#ip##_h5_web_default", "appName": "tborder", "appVersion": "3.0" }
 
-                    const _queryBuilder = new queryBuilder(change_param_data)
-                    _queryBuilder.fetchMoreItemDetails()
+                    const _queryBuilder = new queryBuilder({orderId})
+                    _queryBuilder.fetchItemLogistics()
                         .then(res => {
                             sendResponse(res)
                         }).catch(e => {
@@ -128,9 +122,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             break;
         }
 
-        case 'nswex': {
+        case 'webrequest': {
             switch (child_msg) {
-                case 'script_loaded': {
+                case 'test': {
+                    console.log(request.body);
                     break;
                 }
             }
@@ -194,7 +189,9 @@ chrome.runtime.onConnect.addListener((port) => {
                                     ontheway_html,
                                     arrived_html
                                 };
-                                port.postMessage({ done_process_entry: true });
+                                setTimeout(() => {
+                                    port.postMessage({ done_process_entry: true });
+                                }, 2000);
                             } else {
                                 resp.freight_html = {
                                     delivery_html: {
@@ -203,7 +200,9 @@ chrome.runtime.onConnect.addListener((port) => {
                                     }
                                 };
 
-                                port.postMessage({ done_process_entry: true });
+                                setTimeout(() => {
+                                    port.postMessage({ done_process_entry: true });
+                                }, 2000);
 
                             }
 

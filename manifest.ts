@@ -8,10 +8,17 @@ const manifest: chrome.runtime.ManifestV3 = {
     name: packageJson.name,
     version: packageJson.version,
     description: packageJson.description,
-    permissions: [
-        'storage', 'sidePanel', "cookies", "webRequest",
-        "unlimitedStorage", "tabs", "debugger", "scripting",
-        "webNavigation", "background","notifications"
+    "permissions": [
+        "storage",
+        "sidePanel",
+        "cookies",
+        "webRequest",
+        "unlimitedStorage",
+        "tabs",
+        "debugger",
+        "scripting",
+        "webNavigation",
+        "notifications"
     ],
     host_permissions: ["*://*/*"],
     background: {

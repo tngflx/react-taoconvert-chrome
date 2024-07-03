@@ -13,5 +13,9 @@ export function getSecretByContentS() {
         return acc;
     }, {});
 
+    if (!_m_h5_tk || !_m_h5_tk_enc) {
+        throw new Error('Cookie can\'t be extracted client side');
+    }
     dataStore.setCookieData({ _m_h5_tk, _m_h5_tk_enc });
+
 }

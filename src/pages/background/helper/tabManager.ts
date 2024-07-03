@@ -63,7 +63,7 @@ export class TabManager {
         }
     }
 
-    public createTab(url: string, message: TabUpdateMessage, onComplete?: () => void) {
+    public createTab(url: string, message: TabUpdateMessage, onComplete: () => void = () => { }) {
         chrome.tabs.create({ url }, (newTab) => {
             this.targetTabId = newTab.id;
             const listener = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => this.onTabUpdated(tabId, changeInfo, listener, message, onComplete);
@@ -71,7 +71,7 @@ export class TabManager {
         });
     }
 
-    public updateTab(existingTab: ExistingTab, url: string, message: TabUpdateMessage, onComplete?: () => void) {
+    public updateTab(existingTab: ExistingTab, url: string, message: TabUpdateMessage, onComplete: () => void = () => { }) {
         const listener = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => this.onTabUpdated(tabId, changeInfo, listener, message, onComplete);
         chrome.tabs.onUpdated.addListener(listener);
 

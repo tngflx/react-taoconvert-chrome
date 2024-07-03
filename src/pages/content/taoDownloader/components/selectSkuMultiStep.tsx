@@ -148,18 +148,18 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     return deep_cloned_prevselectvariants;
                 } else {
                     insertVariantRecursively(existing_variant_objs, current_combined_vkey);
-                    console.log(existing_variant_objs)
 
                     const deepestObjectWEmpty = objectMgr.findObject({ obj: existing_variant_objs, flag: ObjectMgr.FIND_EMPTY_VALUE });
                     let targetKey = current_combined_vkey;
 
                     // Traverse to the deepest empty object
                     if (deepestObjectWEmpty) {
-                        const keys = Object.keys(deepestObjectWEmpty);
-                        targetKey = keys.length > 0 ? keys[keys.length - 1] : current_combined_vkey;
+                        targetKey = Object.keys(deepestObjectWEmpty.parentKey)[0]
                     } else if (!deepestObjectWEmpty && !is_existing_same_current_vkey) {
-                        targetKey = Object.keys(existing_variant_objs).pop() || current_combined_vkey;
+                        const parentKeys = Object.keys(existing_variant_objs);
+                        targetKey = parentKeys.length > 0 ? parentKeys[parentKeys.length - 1] : current_combined_vkey;
                     }
+                    console.log(targetKey)
 
                     setKeyToObserveState(prev_obj_to_observe => ({
                         ...prev_obj_to_observe,

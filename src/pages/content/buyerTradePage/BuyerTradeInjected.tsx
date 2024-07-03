@@ -9,6 +9,8 @@ const { findChildThenParentElbyClassName, checkNodeExistsInChildEl } = DOMTools
 const port = chrome.runtime.connect({ name: 'content-script' });
 const chrome_port = new chromePortMsgHandler(port);
 
+getSecretByContentS();
+
 const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
     const button_container = document.createElement('div');
     button_container.classList.add('tao_convert_button');
@@ -34,7 +36,6 @@ const createBuyerTradeButton = (bought_threadop_wrapper_el) => {
     );
 };
 
-getSecretByContentS();
 
 /**
  * TO NOTE :
@@ -273,7 +274,7 @@ port.onMessage.addListener(async (resp) => {
 
         // This is rightmost wrapper for flag, delete / threadoperations list on buyertrade page
         const bought_threadop_wrapper_els = Array.from(document.querySelectorAll(buyerTradeDivToObserve))
-        const elementsArray = Array.from(bought_threadop_wrapper_els).slice(0, 20) as Element[];
+        const elementsArray = Array.from(bought_threadop_wrapper_els).slice(0, 15) as Element[];
 
         for (const bought_threadop_wrapper_el of elementsArray) {
 
@@ -328,21 +329,23 @@ port.onMessage.addListener(async (resp) => {
                  * reusable is usually db_data
                  * non reusable are just like state, and not for permanent store to db
                  */
-                const buyertrade_extrainfo: { data: any } = await new Promise((resolve) => {
-                    chrome.runtime.sendMessage({ msg_action: "buyertrade:get_itempage_products_moredetails", orderId }, buyertrade_extra_info => {
+                const popup_address: { data: any } = await new Promise((resolve) => {
+                    chrome.runtime.sendMessage({ msg_action: "buyertrade:get_itempage_products_logistics", orderId }, buyertrade_extra_info => {
                         resolve(buyertrade_extra_info)
                     })
                 })
-                const { data: { data: buyertrade_deliver_address } } = buyertrade_extrainfo
-                const addressValue = buyertrade_deliver_address.group.reduce((acc, group) => {
-                    const cellData = Object.values(group).flatMap((innerArray: any) =>
-                        innerArray.map(cell => cell)
-                    ).find(cell => cell.cellType === 'address')
+                const { data: { data: buyertrade_deliver_address } } = popup_address
+                const addressValue = buyertrade_deliver_address?.popupBodyAdress?.fields?.title
 
-                    const addressCell = cellData?.cellData.find(cell => cell.tag === "address");
+                // const addressValue = buyertrade_deliver_address.group.reduce((acc, group) => {
+                //     const cellData = Object.values(group).flatMap((innerArray: any) =>
+                //         innerArray.map(cell => cell)
+                //     ).find(cell => cell.cellType === 'address')
 
-                    return addressCell ? addressCell.fields.value : acc;
-                }, null);
+                //     const addressCell = cellData?.cellData.find(cell => cell.tag === "address");
+
+                //     return addressCell ? addressCell.fields.value : acc;
+                // }, null);
 
                 switch (true) {
                     case (/穆院鑫玖电创.*ML\d+#\w+/.test(addressValue)): {
