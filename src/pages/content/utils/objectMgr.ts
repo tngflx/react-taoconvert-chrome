@@ -5,10 +5,10 @@ export class ObjectMgr {
 
     findObject(options: { obj: Record<string, any>, value?: any, flag: string }): any | undefined {
         const { obj, value, flag } = options;
-        const stack = [{ obj, parentKey: null }];
+        const stack = [{ obj, parentKey: null, currentKey: null }];
 
         while (stack.length > 0) {
-            const { obj: currentObj, parentKey } = stack.pop();
+            const { obj: currentObj, parentKey, currentKey } = stack.pop();
 
             for (const key in currentObj) {
                 if (currentObj.hasOwnProperty(key)) {
@@ -16,25 +16,23 @@ export class ObjectMgr {
                     switch (flag) {
                         case ObjectMgr.FIND_EMPTY_VALUE:
                             if (objValue && typeof objValue === 'object' && Object.keys(objValue).length === 0) {
-                                return { parentKey, currentObj };
+                                return { parentKey: currentKey ?? key, currentObj: { [key]: objValue } };
                             }
                             break;
                         case ObjectMgr.FIND_MATCH_VALUE:
-                            if (Object.keys(objValue).some(k => k === value)) {
-                                return currentObj;
+                            if (objValue === value) {
+                                return { parentKey: currentKey ?? key, currentObj: { [key]: objValue } };
                             }
                             break;
                         case ObjectMgr.FIND_MATCH_PARENTCHILD:
-                            if (Object.keys(objValue).some(k => k === value)) {
-                                return currentObj;
-                            } else {
+                            if (objValue === value) {
+                                return { parentKey: currentKey ?? key, currentObj: { [key]: objValue } };
+                            } else if (typeof objValue === 'object') {
                                 for (const nestedKey in objValue) {
                                     if (objValue.hasOwnProperty(nestedKey)) {
                                         const nestedObjValue = objValue[nestedKey];
-                                        if (typeof nestedObjValue === 'object') {
-                                            if (Object.keys(nestedObjValue).some(k => k === value)) {
-                                                return currentObj;
-                                            }
+                                        if (nestedObjValue === value) {
+                                            return { parentKey: currentKey ?? key, currentObj: { [key]: objValue } };
                                         }
                                     }
                                 }
@@ -42,7 +40,7 @@ export class ObjectMgr {
                             break;
                     }
                     if (typeof objValue === 'object') {
-                        stack.push({ obj: objValue, parentKey: currentObj });
+                        stack.push({ obj: objValue, parentKey: key, currentKey: key });
                     }
                 }
             }

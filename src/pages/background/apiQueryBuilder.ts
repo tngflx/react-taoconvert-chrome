@@ -45,7 +45,7 @@ export class queryBuilder extends h5Encryption {
             type: 'json',
             data: JSON.stringify({ ...url_param_data }),
         };
-        this.fetchOptions  = {
+        this.fetchOptions = {
             headers: {
                 "accept-language": "en-US,en;q=0.9",
                 "sec-fetch-dest": "empty",
@@ -79,20 +79,51 @@ export class queryBuilder extends h5Encryption {
             .map(cookie => `${Object.keys(cookie)[0]}=${Object.values(cookie)[0]}`)
             .join('; ');
 
-        h5_tk_tokens.forEach(cookie => {
-            chrome.cookies.set({
-                url: 'https://taobao.com',
-                name: Object.keys(cookie)[0],
-                value: Object.values(cookie)[0] as string,
-                domain: '.taobao.com',
-                path: '/',
-                secure: true,
-                sameSite: 'no_restriction'
-            });
-        })
-
+        this.modifyCookies(h5_tk_tokens)
     }
 
+
+    async modifyCookies(h5_tk_tokens: any[]) {
+        // await Promise.all(
+        //     h5_tk_tokens.map(cookie => {
+        //         const cookieName = Object.keys(cookie)[0];
+        //         return new Promise<void>((resolve, reject) => {
+        //             chrome.cookies.remove({ url: 'https://taobao.com', name: cookieName }, (details) => {
+        //                 if (details) {
+        //                     resolve();
+        //                 } else {
+        //                     reject(`Failed to remove cookie ${cookieName}`);
+        //                 }
+        //             });
+        //         });
+        //     })
+        // );
+
+        await Promise.all(
+            h5_tk_tokens.map(cookie => {
+                const cookieName = Object.keys(cookie)[0];
+                const cookieValue = Object.values(cookie)[0] as string;
+                return new Promise<void>((resolve, reject) => {
+                    chrome.cookies.set({
+                        url: 'https://taobao.com',
+                        name: cookieName,
+                        value: cookieValue,
+                        domain: '.taobao.com',
+                        path: '/',
+                        secure: true,
+                        sameSite: 'no_restriction',
+                        expirationDate: (new Date().getTime() / 1000) + (1.5 * 60 * 60) // 1.5 hours in seconds
+                    }, (cookie) => {
+                        if (cookie) {
+                            resolve();
+                        } else {
+                            reject(`Failed to set cookie ${cookieName}`);
+                        }
+                    });
+                });
+            })
+        );
+    }
 
     async initH5EncDataWithRetries() {
         const maxRetries = 3;
@@ -153,35 +184,6 @@ export class queryBuilder extends h5Encryption {
                 } else {
                     queryBuilder.h5_tk_token_array = Object.entries(data?.['internal-cache-key']?.cookie) ?? [];
                     resolve();
-                }
-            });
-        });
-
-        // Notify user to delete cookies
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icon.png', // Path to the icon
-            title: 'Delete Cookies?',
-            message: 'Do you want to delete cookies from taobao.com?',
-            buttons: [
-                { title: 'Yes' },
-                { title: 'No' }
-            ],
-            isClickable: false,
-        }, notificationId => {
-            chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
-                if (notificationId === notifId) {
-                    if (btnIdx === 0) { // Yes button
-                        chrome.cookies.getAll({ url: 'https://taobao.com' }, function (cookies) {
-                            cookies.forEach(cookie => {
-                                chrome.cookies.remove({ url: `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`, name: cookie.name }, details => {
-                                    console.log('Cookie removed:', details);
-                                });
-                            });
-                        });
-                    } else {
-                        console.log('User chose not to delete cookies.');
-                    }
                 }
             });
         });

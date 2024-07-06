@@ -154,7 +154,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
                     // Traverse to the deepest empty object
                     if (deepestObjectWEmpty) {
-                        targetKey = Object.keys(deepestObjectWEmpty.parentKey)[0]
+                        targetKey = deepestObjectWEmpty.parentKey
                     } else if (!deepestObjectWEmpty && !is_existing_same_current_vkey) {
                         const parentKeys = Object.keys(existing_variant_objs);
                         targetKey = parentKeys.length > 0 ? parentKeys[parentKeys.length - 1] : current_combined_vkey;
@@ -217,7 +217,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             if (mainTitle !== main_selected_prod_key) {
                 return false;
             }
-            const selectedVariants = item[mainTitle];
+            let selectedVariants = item[mainTitle];
             const parentKey = keyToObserveState?.parentKey || "";
 
             checkNestedVariant(selectedVariants, parentKey);

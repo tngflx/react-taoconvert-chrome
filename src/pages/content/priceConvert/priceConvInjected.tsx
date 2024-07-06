@@ -354,7 +354,7 @@ const urlPattern = /^https?:\/\/(.*\.)?detail\.tmall\.com/;
 
 if (urlPattern.test(location.href)) {
   //if this component load start the script
-  const TmallPageDivToObserve = '[class*="originPrice"]';
+  const TmallPageDivToObserve = '[class*="Item2024--content"]';
 
   mutObserverManager.config = {
     mode: 'addedText',
