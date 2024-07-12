@@ -83,7 +83,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                 if (is_same_category) {
                     if (is_deepest_vkey) {
                         obj[current_combined_vkey] = { price: 0, quantity: 0 };
-                    } else {
+                    } else if (!current_combined_vkey.includes(last_key_prodvdata_notnested)) {
                         obj[current_combined_vkey] = {};
 
                     }
@@ -195,35 +195,46 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
 
 
     const isVariantValueSelected = (variantKey) => {
-        let deepestMatchFound = false;
-
-        const checkNestedVariant = (selectedVariants, currentParentKey, depth = 0) => {
-            // console.log(`Depth: ${depth}, Current parent key: ${currentParentKey}, Current level:,`, selectedVariants);
-
-            if (selectedVariants.hasOwnProperty(variantKey)) {
-                deepestMatchFound = true;
-                return;
-            }
-
-            Object.keys(selectedVariants).forEach((key) => {
-                if (key == currentParentKey && selectedVariants[key] instanceof Object && Object.keys(selectedVariants[key]).includes(variantKey)) {
-                    checkNestedVariant(selectedVariants[key], currentParentKey);
-                }
-            });
-        };
-
-        selectedVariantsState.forEach((item) => {
-            const mainTitle = Object.keys(item)[0];
-            if (mainTitle !== main_selected_prod_key) {
+        const checkNestedVariant = (selectedVariants, targetKey, parentKey = null) => {
+            if (typeof selectedVariants !== 'object' || selectedVariants === null) {
                 return false;
             }
-            let selectedVariants = item[mainTitle];
-            const parentKey = keyToObserveState?.parentKey || "";
-
-            checkNestedVariant(selectedVariants, parentKey);
-        });
-
-        return deepestMatchFound;
+    
+            // Check if we're at the parent key level
+            if (parentKey in selectedVariants) {
+                return checkNestedVariant(selectedVariants[parentKey], targetKey);
+            }
+    
+            // Check if the targetKey is in the current level
+            if (targetKey in selectedVariants) {
+                return true;
+            }
+    
+            // Check for empty object
+            if (Object.keys(selectedVariants).length === 0) {
+                return true;
+            }
+    
+            // Recursively check the next level
+            for (let key in selectedVariants) {
+                if (checkNestedVariant(selectedVariants[key], targetKey)) {
+                    return true;
+                }
+            }
+    
+            return false;
+        };
+    
+        const relevantItem = selectedVariantsState.find(item => Object.keys(item)[0] === main_selected_prod_key);
+    
+        if (!relevantItem) {
+            return false;
+        }
+    
+        const selectedVariants = relevantItem[main_selected_prod_key];
+        const parentKey = keyToObserveState.parentKey;
+    
+        return checkNestedVariant(selectedVariants, variantKey, parentKey);
     };
 
 

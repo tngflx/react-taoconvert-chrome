@@ -72,6 +72,7 @@ export class TabManager {
     }
 
     public updateTab(existingTab: ExistingTab, url: string, message: TabUpdateMessage, onComplete: () => void = () => { }) {
+        this.targetTabId = existingTab.id;
         const listener = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => this.onTabUpdated(tabId, changeInfo, listener, message, onComplete);
         chrome.tabs.onUpdated.addListener(listener);
 
