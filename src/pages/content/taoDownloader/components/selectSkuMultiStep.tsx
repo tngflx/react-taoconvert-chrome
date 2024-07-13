@@ -70,33 +70,30 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         }
 
         const insertVariantRecursively = (obj, current_combined_vkey, current_parent_vkey = '') => {
-            let keys = Object.keys(obj);
-            const [category, current_val] = current_combined_vkey.split('/')
-            const is_deepest_vkey = keys.some(key => key.includes(last_key_prodvdata_notnested))
-            const is_same_category = keys.some(key => key.includes(category))
-
-            if (keys.length === 0) {
-                // Base case: if obj is empty, insert the current_combined_vkey directly
-                obj[current_combined_vkey] = {};
-            } else {
-
-                if (is_same_category) {
-                    if (is_deepest_vkey) {
-                        obj[current_combined_vkey] = { price: 0, quantity: 0 };
-                    } else if (!current_combined_vkey.includes(last_key_prodvdata_notnested)) {
-                        obj[current_combined_vkey] = {};
-
-                    }
+            const [category, current_val] = current_combined_vkey.split('/');
+            const keys = Object.keys(obj);
+            
+            const is_current_last_key = current_combined_vkey.includes(last_key_prodvdata_notnested);
+            const is_same_category = keys.some(key => key.includes(category));
+        
+            const createNewEntry = () => {
+                if (is_current_last_key) {
+                    return { price: 0, quantity: 0 };
                 }
-
-                // Iterate through the keys to find the deepest level
-                for (let key of keys) {
-                    if (typeof obj[key] === 'object' && obj[key] !== null && !key.includes(category)) {
-                        // Recursive case: traverse deeper into the object
-                        insertVariantRecursively(obj[key], current_combined_vkey, key);
-                    }
+                return {};
+            };
+        
+            // If object is empty or we're at the same category, add the new entry
+            if (keys.length === 0 || is_same_category) {
+                obj[current_combined_vkey] = createNewEntry();
+                return;
+            }
+        
+            // Recursively traverse deeper into the object
+            for (let key of keys) {
+                if (typeof obj[key] === 'object' && obj[key] !== null && !key.includes(category)) {
+                    insertVariantRecursively(obj[key], current_combined_vkey, key);
                 }
-
             }
         };
 
@@ -194,47 +191,45 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
     };
 
 
-    const isVariantValueSelected = (variantKey) => {
-        const checkNestedVariant = (selectedVariants, targetKey, parentKey = null) => {
-            if (typeof selectedVariants !== 'object' || selectedVariants === null) {
+    const isVariantValueSelected = (variant_key) => {
+        const checkNestedVariant = (selected_variants, target_key) => {
+            if (typeof selected_variants !== 'object' || selected_variants === null) {
                 return false;
             }
     
-            // Check if we're at the parent key level
-            if (parentKey in selectedVariants) {
-                return checkNestedVariant(selectedVariants[parentKey], targetKey);
-            }
-    
-            // Check if the targetKey is in the current level
-            if (targetKey in selectedVariants) {
-                return true;
-            }
-    
-            // Check for empty object
-            if (Object.keys(selectedVariants).length === 0) {
-                return true;
-            }
-    
-            // Recursively check the next level
-            for (let key in selectedVariants) {
-                if (checkNestedVariant(selectedVariants[key], targetKey)) {
+            // Check if the current key matches or includes the target_key
+            for (let key in selected_variants) {
+                if (key === target_key || key.includes(target_key)) {
                     return true;
+                }
+                
+                // If it's an object, recursively check its children
+                if (typeof selected_variants[key] === 'object' && selected_variants[key] !== null) {
+                    if (checkNestedVariant(selected_variants[key], target_key)) {
+                        return true;
+                    }
                 }
             }
     
             return false;
         };
     
-        const relevantItem = selectedVariantsState.find(item => Object.keys(item)[0] === main_selected_prod_key);
+        const relevant_item = selectedVariantsState.find(item => Object.keys(item)[0] === main_selected_prod_key);
     
-        if (!relevantItem) {
+        if (!relevant_item) {
             return false;
         }
     
-        const selectedVariants = relevantItem[main_selected_prod_key];
-        const parentKey = keyToObserveState.parentKey;
+        const selected_variants = relevant_item[main_selected_prod_key];
+        const parent_key = keyToObserveState.parentKey;
     
-        return checkNestedVariant(selectedVariants, variantKey, parentKey);
+        // If parent_key is provided, start checking from that branch
+        if (parent_key && parent_key in selected_variants) {
+            return checkNestedVariant(selected_variants[parent_key], variant_key);
+        }
+    
+        // Otherwise, check the entire structure
+        return checkNestedVariant(selected_variants, variant_key);
     };
 
 
