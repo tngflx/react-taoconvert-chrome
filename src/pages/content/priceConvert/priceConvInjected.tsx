@@ -234,27 +234,28 @@ if (location.href.includes('https://s.taobao.com/')) {
 /////////////////////////////////////[https://item.taobao.com/]/////////////////////////////////////
 //Affected only in taobao item page
 if (location.href.includes('https://item.taobao.com/')) {
-  let regex = /^item(.*)?(--|-)content/gi;
-  let result = Array.from(document.querySelectorAll('div')).reduce((acc, el) => {
-    if (acc.parent === null && regex.test(el.className)) {
-      acc.parent = el.className;
-      acc.child = Array.from(el.children).find(childEl => /BasicContent--/.test(childEl.className))?.className;
-    }
-    return acc;
-  }, { parent: null, child: null });
 
-  let itemPageDivToObserve = result.parent && result.child ? `div[class="${result.parent}"] [class="${result.child}"]` : `div[class="${result.parent}"]`;
+  let parentReg = /^item(.*)?(--|-)content/gi;
+  let childReg = /BasicContent--/gi;
+  let childReg2 = /PurchasePanel--/gi;
 
-  mutObserverManager.config = {
-    mode: 'addedText',
-    mutTargetChildName: 'Price--priceText',
-    domLoadedSourceParentNode: itemPageDivToObserve,
-    subtree: true,
-  };
   let ran_before = false;
-
-  try {
-    mutObserverManager.startObserver(() => {
+  mutObserverManager.initObsThenChildObs(
+    /^item(.*)?(--|-)content/gi,
+    ['BasicContent--', 'PurchasePanel--'],
+    (itemPageDivToObserve) => {
+      mutObserverManager.config = {
+        mode: 'addedTextnNode',
+        mutTargetChildName: 'Price--priceText',
+        domLoadedSourceParentNode: itemPageDivToObserve,
+        subtree: true,
+        characterData: true
+      };
+      mutObserverManager.startObserver(processPriceText);
+    }
+  );
+  function processPriceText() {
+    try {
       boxRenderer.removeTrailingTaoConvPricebox();
 
       const itempage_price_elements = document.querySelectorAll("[class^='Price--priceText']");
@@ -282,30 +283,30 @@ if (location.href.includes('https://item.taobao.com/')) {
       }
 
       createDownloadListsButton();
-    });
-  } catch (e) {
-    if (e.errorCode == 'elementNotFound') {
-      itemPageDivToObserve = 'ul.tb-meta';
-      mutObserverManager.config = {
-        mode: 'addedText',
-        mutTargetChildName: 'tb-rmb-num',
-        domLoadedSourceParentNode: itemPageDivToObserve,
-        subtree: true,
-      };
+    } catch (e) {
+      if (e.errorCode == 'elementNotFound') {
+        mutObserverManager.config = {
+          mode: 'addedText',
+          mutTargetChildName: 'tb-rmb-num',
+          domLoadedSourceParentNode: 'ul.tb-meta',
+          subtree: true,
+          characterData: true
+        };
 
-      mutObserverManager.startObserver(() => {
-        boxRenderer.removeTrailingTaoConvPricebox();
+        mutObserverManager.startObserver(() => {
+          boxRenderer.removeTrailingTaoConvPricebox();
 
-        const promo_price_element = document.querySelector('strong.tb-promo-price');
-        const original_price_element = document.getElementById('J_StrPrice');
+          const promo_price_element = document.querySelector('strong.tb-promo-price');
+          const original_price_element = document.getElementById('J_StrPrice');
 
-        if (promo_price_element) {
-          boxRenderer.createPriceBox({ price_text_el: original_price_element, pricebox_ct_size: 'md' });
+          if (promo_price_element) {
+            boxRenderer.createPriceBox({ price_text_el: original_price_element, pricebox_ct_size: 'md' });
 
-          const promo_price_parent = document.querySelector('div#J_PromoHd');
-          boxRenderer.createPriceBox({ price_text_el: promo_price_element, pricebox_ct_size: '', insert_to_target_el: promo_price_parent });
-        } else boxRenderer.createPriceBox({ price_text_el: original_price_element, pricebox_ct_size: 'lg' });
-      });
+            const promo_price_parent = document.querySelector('div#J_PromoHd');
+            boxRenderer.createPriceBox({ price_text_el: promo_price_element, pricebox_ct_size: '', insert_to_target_el: promo_price_parent });
+          } else boxRenderer.createPriceBox({ price_text_el: original_price_element, pricebox_ct_size: 'lg' });
+        });
+      }
     }
   }
 
@@ -313,7 +314,7 @@ if (location.href.includes('https://item.taobao.com/')) {
     if (ran_before === false) {
       const item_header_el = document.querySelector('[class^="Price--priceWrap"]');
       const root_dom = document.querySelector('#root');
-      Object.assign(item_header_el.style, {
+      Object.assign(item_header_el?.style, {
         display: 'flex',
         'align-items': 'center'
       });

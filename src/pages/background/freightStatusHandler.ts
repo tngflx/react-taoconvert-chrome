@@ -1,3 +1,5 @@
+import { DOMStringTools } from "../content/utils/misc";
+
 abstract class BaseFreightStatusChecker {
     protected baseUrl: string;
 
@@ -105,18 +107,16 @@ export class MulupostStatusChecker extends BaseFreightStatusChecker {
         return this.fetchFreight(url)
             .then((mulu_html: string) => {
 
+                const mulu_empty_el = DOMStringTools.checkBothClassExists(mulu_html, 'mulu-empty', 'mulu-empty-text');
+                const tcode_link_el = DOMStringTools.checkClassExistsAndGetHref(mulu_html, 'op-detail');
 
-                const linkMatch = mulu_html.match(/<a class="op-detail" href="([^"]+)"/);
-                if (!linkMatch || linkMatch.length < 2) {
+                if (mulu_empty_el) {
+                    return 'order_not_added';
+                } else if (!tcode_link_el) {
                     throw new Error('Link not found in HTML');
-                } else {
-                    const isEmpty = mulu_html.includes('mulu-empty') && mulu_html.includes('Î´²éÑ¯µ½');
-
-                    if (isEmpty) {
-                        return 'not found';
-                    }
                 }
-                const id = linkMatch[1].match(/(\d+)$/)[1];
+
+                const id = tcode_link_el.match(/(\d+)$/)[1];
                 const url = this.buildUrl('status', id);
 
                 return this.fetchFreight(url);

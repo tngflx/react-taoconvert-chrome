@@ -114,18 +114,19 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     break;
                 }
                 case 'update_nswex_tab': {
-                    const { nswexTab, selected_product_infos, url } = request;
-                    tab_manager.updateTab(nswexTab, url, { msg_action: 'nswex_fill_form', ...selected_product_infos });
+                    const { expressTab, selected_product_infos, url } = request;
+                    tab_manager.updateTab(expressTab, url, { msg_action: 'nswex_fill_form', ...selected_product_infos });
                     break;
                 }
-            }
-            break;
-        }
 
-        case 'webrequest': {
-            switch (child_msg) {
-                case 'test': {
-                    console.log(request.body);
+                case 'create_mulupost_tab': {
+                    const { selected_product_infos, url } = request;
+                    tab_manager.createTab(url, { msg_action: 'mulupost_fill_form', ...selected_product_infos });
+                    break;
+                }
+                case 'update_mulupost_tab': {
+                    const { expressTab, selected_product_infos, url } = request;
+                    tab_manager.updateTab(expressTab, url, { msg_action: 'mulupost_fill_form', ...selected_product_infos });
                     break;
                 }
             }
@@ -172,6 +173,9 @@ chrome.runtime.onConnect.addListener((port) => {
 
                             delete resp.msg_action;
 
+                            setTimeout(() => {
+                                port.postMessage({ done_process_entry: true });
+                            }, 2000);
                             port.postMessage({ msg_action: "background:process_mulupost_freight_html", ...resp })
                             break;
                         }
@@ -219,16 +223,16 @@ chrome.runtime.onConnect.addListener((port) => {
                     break;
                 }
 
-                case 'postprocess': {
-                    switch (child_msg) {
-                        case 'redive_endpoint':
-                            resp.freight_html = {
-                                redive_html: await nswexFreight.checkStatus({ type: NswexFreightStatusType.REDIVE_INFO, nswex_order_id: orderId })
-                            };
-                            break;
-                    }
-                    break;
-                }
+                // case 'postprocess': {
+                //     switch (child_msg) {
+                //         case 'redive_endpoint':
+                //             resp.freight_html = {
+                //                 redive_html: await nswexFreight.checkStatus({ type: NswexFreightStatusType.REDIVE_INFO, nswex_order_id: orderId })
+                //             };
+                //             break;
+                //     }
+                //     break;
+                // }
             }
 
         });

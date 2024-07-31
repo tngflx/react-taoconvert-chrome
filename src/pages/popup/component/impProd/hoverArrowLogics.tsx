@@ -4,15 +4,14 @@ import cross from '@assets/img/cross.svg';
 import tick from '@assets/img/success.svg';
 import { useImpProdContext } from '../../tabs/impProdContextProvider';
 
-const HoverArrow = ({ orderId }) => {
-  const desiredURL = 'https://nswex.com/index.php?route=account/shipforme';
+const HoverArrow = ({ orderId, freightCompany }) => {
   const { successEntry, setSuccessEntry } = useImpProdContext();
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const { msg_action, isEveryInputFilledFlag, isEveryInputSameFlag } = request;
     const [parent_msg, child_msg] = msg_action.split(':');
     switch (parent_msg) {
-      case 'nswex':
+      case 'nswex': {
         switch (child_msg) {
           case 'update_hoverarrow':
             if (isEveryInputFilledFlag && isEveryInputSameFlag) {
@@ -20,27 +19,59 @@ const HoverArrow = ({ orderId }) => {
             } else if (!isEveryInputFilledFlag || !isEveryInputSameFlag) {
               setSuccessEntry(true);
             }
-
             break;
         }
-
         break;
+      }
+
+      case 'mulupost': {
+        switch (child_msg) {
+          case 'update_hoverarrow':
+            if (isEveryInputFilledFlag && isEveryInputSameFlag) {
+              setSuccessEntry(false);
+            } else if (!isEveryInputFilledFlag || !isEveryInputSameFlag) {
+              setSuccessEntry(true);
+            }
+            break;
+        }
+        break;
+      }
       default:
         break;
     }
   });
 
   const clickHandler = () => {
-    chrome.tabs.query({ url: 'https://nswex.com/*' }, async function (tabs) {
-      const nswexTab = tabs.length > 0 ? tabs[0] : null;
-      const selected_product_infos = await idb.get(orderId);
-
-      if (nswexTab) {
-        chrome.runtime.sendMessage({ msg_action: 'popup:update_nswex_tab', url: desiredURL, selected_product_infos, nswexTab });
-      } else {
-        chrome.runtime.sendMessage({ msg_action: 'popup:create_nswex_tab', url: desiredURL, selected_product_infos });
+    const expressConfig = {
+      nswex: {
+        match_url: '*://nswex.com/*',
+        redirect_url: 'https://nswex.com/index.php?route=account/shipforme',
+        updateAction: 'popup:update_nswex_tab',
+        createAction: 'popup:create_nswex_tab'
+      },
+      mulupost: {
+        match_url: '*://*.mulupost.com/*',
+        redirect_url: 'https://www.mulupost.com/my',
+        updateAction: 'popup:update_mulupost_tab',
+        createAction: 'popup:create_mulupost_tab'
       }
-    });
+    };
+
+    if (expressConfig[freightCompany]) {
+      const { match_url, updateAction, createAction, redirect_url } = expressConfig[freightCompany];
+
+      chrome.tabs.query({ url: match_url }, async function (tabs) {
+        const expressTab = tabs.length > 0 ? tabs[0] : null;
+        const selected_product_infos = await idb.get(orderId);
+
+        if (expressTab) {
+          chrome.runtime.sendMessage({ msg_action: updateAction, url: redirect_url, selected_product_infos, expressTab });
+        } else {
+          chrome.runtime.sendMessage({ msg_action: createAction, url: redirect_url, selected_product_infos });
+        }
+      });
+    }
+
   };
 
   return (

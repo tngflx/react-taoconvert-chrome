@@ -1,6 +1,14 @@
 ﻿// Inform the background script that the content script has loaded
 chrome.runtime.sendMessage({ msg_action: 'nswex:script_loaded' });
 
+const receivedButtons = document.querySelectorAll('a[id^="button-received"]');
+receivedButtons.forEach(button => {
+  button.setAttribute('href', '');
+  (button as HTMLElement).style.opacity = '0.2';
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+  });
+});
 chrome.runtime.onConnect.addListener(function (port) {
   port.onMessage.addListener(request => {
     if (request.msg_action === 'nswex_fill_form') {

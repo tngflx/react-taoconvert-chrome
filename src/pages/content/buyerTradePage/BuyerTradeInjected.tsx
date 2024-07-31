@@ -55,42 +55,48 @@ port.onMessage.addListener(async (resp) => {
 
     switch (msg_action) {
         case 'background:process_mulupost_freight_html': {
-            const mulu_doc = parser.parseFromString(freight_html.mulu_html as string, 'text/html')
-            const panel_bd_arr = Array.from(mulu_doc.querySelectorAll('.panel-bd .m-desc-item'))
-            const freight_infos = panel_bd_arr.reduce((acc, item) => {
-                const label = item.querySelector('.label').textContent.trim();
-                const value = item.querySelector('.value').textContent.trim();
-                acc.push({ label, value });
+            if (freight_html.mulu_html === 'order_not_added') {
+                db_data.freight_delivery_data = {
+                    company: 'Mulupost',
+                    delivery_status: 'none'
+                };
 
-                return acc;
-            }, []);
+            } else {
+                const mulu_doc = parser.parseFromString(freight_html.mulu_html as string, 'text/html')
+                const panel_bd_arr = Array.from(mulu_doc.querySelectorAll('.panel-bd .m-desc-item'))
+                const freight_infos = panel_bd_arr.reduce((acc, item) => {
+                    const label = item.querySelector('.label').textContent.trim();
+                    const value = item.querySelector('.value').textContent.trim();
+                    acc.push({ label, value });
 
-            const freightProps: { [key: string]: string } = {
-                company: 'Mulupost',
-                tracking_code: mulu_doc.querySelector('.relative.panel .panel-hd .text-primary').textContent,
-                delivery_status_tracklink: mulu_doc.querySelector('.panel-ft a.btn-primary[href]')?.getAttribute('href'),
-                date_added: freight_infos[7].value,
+                    return acc;
+                }, []);
+
+                const freightProps: { [key: string]: string } = {
+                    company: 'Mulupost',
+                    tracking_code: mulu_doc.querySelector('.panel .panel-hd .text-primary')?.textContent,
+                    delivery_status_tracklink: mulu_doc.querySelector('.panel-ft a.btn-primary[href]')?.getAttribute('href'),
+                    date_added: freight_infos[7].value,
+                }
+                switch (true) {
+                    case (/包裹运输中/g.test(freight_infos[1].value)):
+                        freightProps["delivery_status"] = 'delivery'
+                        break;
+                    case (/运输完成/g.test(freight_infos[1].value)):
+                        freightProps["delivery_status"] = 'completed'
+                        break;
+                    case (/签收入库/g.test(freight_infos[1].value)):
+                        freightProps["delivery_status"] = 'arrived'
+                        break;
+                    case (/发货运输/g.test(freight_infos[1].value)):
+                        freightProps["delivery_status"] = 'on the way'
+                        break;
+                    default:
+                }
+
+                db_data.freight_delivery_data = freightProps;
             }
-            switch (true) {
-                case (/包裹运输中/g.test(freight_infos[1].value)):
-                    freightProps["delivery_status"] = 'delivery'
-                    break;
-                case (/运输完成/g.test(freight_infos[1].value)):
-                    freightProps["delivery_status"] = 'completed'
-                    break;
-                case (/签收入库/g.test(freight_infos[1].value)):
-                    freightProps["delivery_status"] = 'arrived'
-                    break;
-                case (/发货运输/g.test(freight_infos[1].value)):
-                    freightProps["delivery_status"] = 'on the way'
-                    break;
-                case ((freight_html.mulu_html as string)?.includes('not found')):
-                    freightProps["delivery_status"] = 'none'
-                    break;
-                default:
-            }
-            db_data.freight_delivery_data = freightProps;
-
+            
             port.postMessage({ msg_action: 'buyertrade:save_db', db_data })
             console.log({ ...db_data }, 'mulupost')
             break;
@@ -173,7 +179,7 @@ port.onMessage.addListener(async (resp) => {
                                 case 'shipping_note':
                                     rowData['delivery_status_tracklink'] = tbody_value[thead_index]?.querySelector('a.agree')?.getAttribute('href');
                                     break;
-                                case 'delivery_order_status':{
+                                case 'delivery_order_status': {
                                     const status = tbody_value[thead_index]?.querySelector('span.order_status')?.textContent.trim().replace(/\n/g, '') || tbody_value[thead_index]?.querySelector('span#order_product_status')?.textContent.trim().replace(/\n/g, '');
                                     status == 'completed' ? rowData[key] = 'Delivery' : rowData[key] = status;
                                     break;
@@ -358,7 +364,7 @@ port.onMessage.addListener(async (resp) => {
                         first_query = false;
                         break;
                     };
-                    
+
                     default:
                         console.error(`No freight company found, ${db_data}`)
                         break;

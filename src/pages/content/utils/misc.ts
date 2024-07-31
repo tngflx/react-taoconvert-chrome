@@ -1,5 +1,24 @@
 import { MutObsError } from "./errorHandler";
 
+/**
+ * Provides utility methods for checking the existence of HTML classes in a given HTML string.
+ */
+export class DOMStringTools {
+    static checkBothClassExists(htmlString: string, ...classNames: string[]): boolean {
+        return classNames.every(className => {
+            const regex = new RegExp(`<[^>]+class="(?:[^"]*\\s)?${className}(?:\\s[^"]*)?"`)
+            return regex.test(htmlString)
+        })
+    }
+
+    static checkClassExistsAndGetHref(htmlString: string, className: string): string | null {
+        const regex = new RegExp(`<[^>]+class="(?:[^"]*\\s)?${className}(?:\\s[^"]*)?"[^>]*href="([^"]*)"`, 'i')
+        const match = htmlString.match(regex)
+        return match ? match[1] : null
+    }
+}
+
+
 export class DOMTools {
 
     /**
@@ -122,7 +141,7 @@ export class MutationObserverManager extends DOMTools {
 
     errorCodes: Record<string, string>;
     config: {
-        mode: 'addedNode' | 'removedNode' | 'addedText' | 'addedAttrib';
+        mode: 'addedNode' | 'removedNode' | 'addedText' | 'addedAttrib' | 'addedTextnNode'
         /**
          * The mutated target child node of domLoadedSourceParentNode.
          * the selector doesn't need to be in [class^=''] format
@@ -139,24 +158,51 @@ export class MutationObserverManager extends DOMTools {
          */
         domLoadedSourceParentNode: GenericSelector | string | Node
         subtree: boolean
+        characterData: boolean
     };
     foundTargetNode: boolean;
     mutatedTargetParentNode: Element | null;
     mutatedTargetChildNode: Element | string;
     subtree: boolean;
+    characterData: boolean;
 
     constructor() {
         super();
 
-        this.config = { mode: 'addedNode', mutTargetChildName: '', domLoadedSourceParentNode: '[class^=""] [class*=""]', subtree: false };
+        this.config = { mode: 'addedNode', mutTargetChildName: '', domLoadedSourceParentNode: '[class^=""] [class*=""]', subtree: false, characterData: false };
         this.foundTargetNode = false
         this.mutatedTargetParentNode = null
         this.mutatedTargetChildNode = null
         this.subtree = false
+        this.characterData = false
+    }
+
+    initObsThenChildObs(
+        parentRegex: RegExp,
+        childSelectors: string[],
+        callback: (itemPageDivToObserve: string) => void
+    ) {
+        const observer = new MutationObserver((mutations, obs) => {
+            const parentElement = Array.from(document.querySelectorAll('div')).find(el => parentRegex.test(el.className));
+
+            if (parentElement) {
+                const foundChildElements = childSelectors.map(selector =>
+                    parentElement.querySelector(`[class*="${selector}"]`)
+                );
+
+                if (foundChildElements.every(el => el)) {
+                    obs.disconnect();
+                    const itemPageDivToObserve = `div[class*="${parentElement.className}"] ${foundChildElements.map(el => `[class*="${el.className}"]`).join(' ')}`;
+                    callback(itemPageDivToObserve);
+                }
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
     }
 
     startObserver(callback) {
-        const { mode, mutTargetChildName, domLoadedSourceParentNode, subtree } = this.config;
+        const { mode, mutTargetChildName, domLoadedSourceParentNode, subtree, characterData } = this.config;
 
         let targetElement;
         if (typeof domLoadedSourceParentNode == 'object') {
@@ -168,6 +214,7 @@ export class MutationObserverManager extends DOMTools {
         if (targetElement) {
             this.mutatedTargetParentNode = targetElement
             this.subtree = subtree
+            this.characterData = characterData
         } else {
             // Not to throw error here as mutationObserver can still observe unloaded elements
             throw MutObsError.elementNotFound(domLoadedSourceParentNode as string);
@@ -206,13 +253,16 @@ export class MutationObserverManager extends DOMTools {
                     this.stopObserverBeforeDomChanges(observer, callback)
                     break;
 
-                case 'addedText':
-                    this.foundTargetNode = mutationsList.some(mutation =>
-                        mutation.type === 'childList' &&
-                        Array.from(mutation.addedNodes).some(node =>
-                            MutationObserverManager.checkTextInsertedInParentEl(node as Element, mutTargetChildName)
-                        )
-                    );
+                case 'addedTextnNode':
+                    this.foundTargetNode = mutationsList.some(mutation => {
+                        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                            return Array.from(mutation.addedNodes).some(node =>
+                                MutationObserverManager.checkTextInsertedInParentEl(node as Element, mutTargetChildName)
+                            );
+                        } else if (mutation.type === 'characterData') {
+                            return MutationObserverManager.checkTextInsertedInParentEl(mutation.target as Element, mutTargetChildName)
+                        }
+                    });
 
                     this.stopObserverBeforeDomChanges(observer, callback)
                     break;
@@ -232,7 +282,7 @@ export class MutationObserverManager extends DOMTools {
         })
 
         // To init observe on targetelement
-        observer.observe(targetElement, { childList: true, subtree });
+        observer.observe(targetElement, { childList: true, subtree, characterData });
     }
 
     stopObserverBeforeDomChanges(observer, callback) {
@@ -241,7 +291,7 @@ export class MutationObserverManager extends DOMTools {
         if (this.foundTargetNode) {
             callback()
         }
-        observer.observe(this.mutatedTargetParentNode, { childList: true, subtree: this.subtree });
+        observer.observe(this.mutatedTargetParentNode, { childList: true, subtree: this.subtree, characterData: this.characterData });
     }
 }
 

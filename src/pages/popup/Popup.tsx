@@ -25,7 +25,12 @@ const MenuLinks = ({ menuLinks }) => {
         <ul className="flex px-1 lg:px-4">
             {menuLinks.map((link) => (
                 <div className="relative group" key={link.name}>
-                    <li className={`p-2 font-semibold rounded-lg cursor-pointer lg:px-4 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 ${location.pathname === link.route ? 'active' : ''}`}>
+                    <li className={
+                        `p-2 font-semibold rounded-lg cursor-pointer 
+                        lg:px-4 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 
+                        hover:bg-slate-200 dark:hover:bg-slate-800 
+                        ${location.pathname === link.route ? 'active' : ''}`
+                    }>
                         <Link to={link.route}>{link.name}</Link>
                     </li>
                 </div>
@@ -56,10 +61,22 @@ const Navbar = () => {
 
 
 const Container = () => {
+    const location = useLocation();
+    let bgClass;
+    switch (location.pathname) {
+        case '/importedProducts':
+            bgClass = 'bg-white dark:bg-white-800 mx-4';
+            break;
+        default:
+            bgClass = "bg-slate-200 dark:bg-slate-800";
+    }
+
     return (
         <>
             <Navbar />
-            <Outlet />
+            <div className={`${bgClass} h-dvh grow items-center justify-center`}>
+                <Outlet />
+            </div>
         </>
     );
 };

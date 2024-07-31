@@ -57,7 +57,7 @@ export const ImportedProductsTab = () => {
         <ImpProdContextProvider>
             <ImportedProducts />
             <CircularButton icon={''} bgColor={''} orderId={undefined} />
-            <HoverArrow orderId={undefined} />
+            <HoverArrow orderId={undefined} freightCompany={undefined} />
         </ImpProdContextProvider>
     );
 };

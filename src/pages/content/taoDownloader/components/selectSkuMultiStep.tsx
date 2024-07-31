@@ -72,23 +72,23 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
         const insertVariantRecursively = (obj, current_combined_vkey, current_parent_vkey = '') => {
             const [category, current_val] = current_combined_vkey.split('/');
             const keys = Object.keys(obj);
-            
+
             const is_current_last_key = current_combined_vkey.includes(last_key_prodvdata_notnested);
             const is_same_category = keys.some(key => key.includes(category));
-        
+
             const createNewEntry = () => {
                 if (is_current_last_key) {
                     return { price: 0, quantity: 0 };
                 }
                 return {};
             };
-        
+
             // If object is empty or we're at the same category, add the new entry
             if (keys.length === 0 || is_same_category) {
                 obj[current_combined_vkey] = createNewEntry();
                 return;
             }
-        
+
             // Recursively traverse deeper into the object
             for (let key of keys) {
                 if (typeof obj[key] === 'object' && obj[key] !== null && !key.includes(category)) {
@@ -196,13 +196,13 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
             if (typeof selected_variants !== 'object' || selected_variants === null) {
                 return false;
             }
-    
+
             // Check if the current key matches or includes the target_key
             for (let key in selected_variants) {
                 if (key === target_key || key.includes(target_key)) {
                     return true;
                 }
-                
+
                 // If it's an object, recursively check its children
                 if (typeof selected_variants[key] === 'object' && selected_variants[key] !== null) {
                     if (checkNestedVariant(selected_variants[key], target_key)) {
@@ -210,31 +210,40 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                     }
                 }
             }
-    
+
             return false;
         };
-    
+
         const relevant_item = selectedVariantsState.find(item => Object.keys(item)[0] === main_selected_prod_key);
-    
+
         if (!relevant_item) {
             return false;
         }
-    
+
         const selected_variants = relevant_item[main_selected_prod_key];
         const parent_key = keyToObserveState.parentKey;
-    
-        // If parent_key is provided, start checking from that branch
+
+        /**
+         * Checks if the given variant key is selected in the current state of the selected variants.
+         * If a parent key is provided, it will start checking from that branch of the selected variants object.
+         * Otherwise, it will check the entire structure of the selected variants.
+         *
+         * @param {string} variant_key - The variant key to check for selection.
+         * @returns {boolean} - True if the variant key is selected, false otherwise.
+         */
         if (parent_key && parent_key in selected_variants) {
-            return checkNestedVariant(selected_variants[parent_key], variant_key);
+            return checkNestedVariant(selected_variants[parent_key], variant_key) || variant_key in selected_variants;
         }
-    
+
         // Otherwise, check the entire structure
-        return checkNestedVariant(selected_variants, variant_key);
+        return checkNestedVariant(selected_variants, variant_key)
     };
 
 
 
     const handleNextStep = () => {
+        let res = Object.keys(selectedVariantsState)
+        console.log('keys', res)
         console.log('selectedVariants', selectedVariantsState);
         console.log('objToObserve', keyToObserveState);
         // onSelectSkuText(selectedVariants);
@@ -276,7 +285,7 @@ const SelectSkuFirstStep = ({ onSelectSkuText }) => {
                         <div className="flex items-center ps-3" key={index}>
                             <Checkbox.Root
                                 className="w-4 h-4 text-blue-400 bg-green-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                                checked={keyToObserveState?.["main_product_title"] === main_product_title}
+                                checked={selectedVariantsState.some(item => Object.keys(item)[0] === main_product_title)}
                                 onCheckedChange={() => handleCheckboxChange({ main_product_title, variant: undefined })}
                                 id={`checkbox_${main_product_title}_${index}`}>
                                 <Checkbox.Indicator className="text-green">
